@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 
+	"github.com/dimfeld/httptreemux/v5"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -98,4 +101,34 @@ func ReportError(span trace.Span, err error) {
 	}
 	span.SetStatus(codes.Error, err.Error())
 	span.RecordError(err)
+}
+
+var (
+	attrResourceName = attribute.Key("resource.name")
+)
+
+func Middleware(tp trace.TracerProvider) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			opts := []otelhttp.Option{
+				otelhttp.WithTracerProvider(tp),
+			}
+			opName := "unknown"
+			if routeData := httptreemux.ContextData(r.Context()); routeData != nil {
+				routeKey := routeData.Route()
+				opName = routeKey
+				attrs := []attribute.KeyValue{
+					attrResourceName.String(routeKey),
+					semconv.HTTPRouteKey.String(routeKey),
+				}
+				for k, v := range routeData.Params() {
+					a := attribute.String(fmt.Sprintf("http.route_params.%s", k), v)
+					attrs = append(attrs, a)
+				}
+				opts = append(opts, otelhttp.WithSpanOptions(trace.WithAttributes(attrs...)))
+			}
+			h := otelhttp.NewHandler(next, opName, opts...)
+			h.ServeHTTP(w, r)
+		})
+	}
 }

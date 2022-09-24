@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dimfeld/httptreemux/v5"
+	"go.opentelemetry.io/otel/trace"
 )
 
-func New(stsClient *sts.Client) (*App, error) {
+func New(tp trace.TracerProvider, stsClient *sts.Client) (*App, error) {
 	if stsClient == nil {
 		return nil, errors.New("stsClient is nil")
 	}
-	return &App{stsClient: stsClient}, nil
+	return &App{stsClient: stsClient, tp: tp}, nil
 }
 
 type App struct {
 	stsClient *sts.Client
+	tp        trace.TracerProvider
 }
 
 func (*App) handleRoot() http.Handler {
@@ -74,6 +77,7 @@ type Router interface {
 
 func (app *App) Handler() http.Handler {
 	router := httptreemux.NewContextMux()
+	router.UseHandler(tracing.Middleware(app.tp))
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/me", app.handleMe())
 	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
