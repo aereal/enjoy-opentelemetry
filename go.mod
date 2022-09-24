@@ -15,6 +15,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.10.0
 	go.opentelemetry.io/otel/sdk v1.10.0
 	go.opentelemetry.io/otel/trace v1.10.0
+	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7
 )
 
 require (

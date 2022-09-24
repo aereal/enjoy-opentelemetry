@@ -72,8 +72,10 @@ type Router interface {
 	Handler(method, path string, handler http.Handler)
 }
 
-func (app *App) DefineRoutes(router Router) {
+func (app *App) Handler() http.Handler {
+	router := httptreemux.NewContextMux()
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/me", app.handleMe())
 	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
+	return router
 }

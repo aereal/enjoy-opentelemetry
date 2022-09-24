@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/aereal/enjoy-opentelemetry/downstream"
-	"github.com/aereal/enjoy-opentelemetry/graceful"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,13 +25,24 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
 	shutdownTimeout  = time.Second * 5
 	httpClient       = otelhttp.DefaultClient
 	attrResourceName = attribute.Key("resource.name")
+
+	upstreamPort   int
+	downstreamPort int
+	deploymentEnv  string
 )
+
+func init() {
+	flag.IntVar(&upstreamPort, "upstream-port", 8080, "upstream server port")
+	flag.IntVar(&downstreamPort, "downstream-port", 8081, "downstream server port")
+	flag.StringVar(&deploymentEnv, "env", "local", "deployment environment")
+}
 
 func withTrace() func(http.Handler) http.Handler {
 	formatter := otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
@@ -51,12 +66,13 @@ func withTrace() func(http.Handler) http.Handler {
 }
 
 func run() error {
+	flag.Parse()
 	setupCtx := context.Background()
 	tp, err := tracing.Setup(
 		setupCtx,
 		tracing.WithDebugExporter(os.Stderr),
 		tracing.WithHTTPExporter(),
-		tracing.WithDeploymentEnvironment("local"),
+		tracing.WithDeploymentEnvironment(deploymentEnv),
 		tracing.WithResourceName("enjoy-opentelemetry"),
 	)
 	if err != nil {
@@ -86,20 +102,49 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
-	mux := httptreemux.NewContextMux()
-	mux.UseHandler(withTrace())
-	group := mux.NewGroup("/downstream")
-	downstreamApp.DefineRoutes(group)
-	downstreamSrv := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
+	servers := []*server{
+		{
+			label: "upstream",
+			srv: &http.Server{
+				Addr:    fmt.Sprintf(":%d", upstreamPort),
+				Handler: buildUpstreamHandler(),
+			},
+		},
+		{
+			label: "downstream",
+			srv: &http.Server{
+				Addr:    fmt.Sprintf(":%d", downstreamPort),
+				Handler: withTrace()(downstreamApp.Handler()),
+			},
+		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	if err := graceful.StartServer(ctx, downstreamSrv); err != nil {
+	eg, ctx := errgroup.WithContext(ctx)
+	go graceful(ctx, servers...)
+	for _, srv := range servers {
+		srv := srv
+		eg.Go(func() error {
+			log.Printf("%s: listening on %s", srv.label, srv.srv.Addr)
+			if err := srv.srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				return fmt.Errorf("%s: %w", srv.label, err)
+			}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func buildUpstreamHandler() http.Handler {
+	mux := httptreemux.NewContextMux()
+	mux.GET("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprintln(w, `{"name":"upstream","ok":true}`)
+	}))
+	return mux
 }
 
 func main() {
@@ -111,4 +156,30 @@ func main() {
 		}
 		os.Exit(exitCode)
 	}
+}
+
+type server struct {
+	label string
+	srv   *http.Server
+}
+
+func graceful(ctx context.Context, servers ...*server) {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("received signal: %q", sig)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var wg sync.WaitGroup
+	for _, srv := range servers {
+		srv := srv
+		wg.Add(1)
+		go func(srv *server) {
+			if err := srv.srv.Shutdown(ctx); err != nil {
+				log.Printf("%s: failed to gracefully shutdown server: %s", srv.label, err)
+			}
+			defer wg.Done()
+		}(srv)
+	}
+	log.Print("shutdown server")
 }
