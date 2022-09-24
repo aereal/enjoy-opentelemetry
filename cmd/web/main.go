@@ -30,12 +30,14 @@ var (
 	upstreamPort   int
 	downstreamPort int
 	deploymentEnv  string
+	serviceName    string
 )
 
 func init() {
 	flag.IntVar(&upstreamPort, "upstream-port", 8080, "upstream server port")
 	flag.IntVar(&downstreamPort, "downstream-port", 8081, "downstream server port")
 	flag.StringVar(&deploymentEnv, "env", "local", "deployment environment")
+	flag.StringVar(&serviceName, "service", "enjoy-opentelemetry", "service name")
 }
 
 func run() error {
@@ -46,7 +48,7 @@ func run() error {
 		tracing.WithDebugExporter(os.Stderr),
 		tracing.WithHTTPExporter(),
 		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName("enjoy-opentelemetry-upstream"),
+		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, "upstream")),
 	)
 	if err != nil {
 		return fmt.Errorf("upstream: tracing.Setup: %w", err)
@@ -63,7 +65,7 @@ func run() error {
 		tracing.WithDebugExporter(os.Stderr),
 		tracing.WithHTTPExporter(),
 		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName("enjoy-opentelemetry-downstream"),
+		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, "downstream")),
 	)
 	if err != nil {
 		return fmt.Errorf("downstream: tracing.Setup: %w", err)
