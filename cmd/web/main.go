@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -31,6 +32,7 @@ var (
 	downstreamPort int
 	deploymentEnv  string
 	serviceName    string
+	debug          bool
 )
 
 func init() {
@@ -38,44 +40,25 @@ func init() {
 	flag.IntVar(&downstreamPort, "downstream-port", 8081, "downstream server port")
 	flag.StringVar(&deploymentEnv, "env", "local", "deployment environment")
 	flag.StringVar(&serviceName, "service", "enjoy-opentelemetry", "service name")
+	flag.BoolVar(&debug, "debug", false, "debug mode")
 }
 
 func run() error {
 	flag.Parse()
 	setupCtx := context.Background()
-	upstreamTracerProvider, err := tracing.Setup(
-		setupCtx,
-		tracing.WithDebugExporter(os.Stderr),
-		tracing.WithHTTPExporter(),
-		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, "upstream")),
-	)
+	upstreamTracerProvider, cleanupUpstream, err := setupTracerProvider(setupCtx, "upstream")
 	if err != nil {
-		return fmt.Errorf("upstream: tracing.Setup: %w", err)
+		return err
+	}
+	downstreamTracerProvider, cleanupDownstream, err := setupTracerProvider(setupCtx, "downstream")
+	if err != nil {
+		return err
 	}
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		if err := upstreamTracerProvider.Shutdown(ctx); err != nil {
-			log.Printf("failed to cleanup otel trace provider: %s", err)
-		}
-	}()
-	downstreamTracerProvider, err := tracing.Setup(
-		setupCtx,
-		tracing.WithDebugExporter(os.Stderr),
-		tracing.WithHTTPExporter(),
-		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, "downstream")),
-	)
-	if err != nil {
-		return fmt.Errorf("downstream: tracing.Setup: %w", err)
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
-		defer cancel()
-		if err := downstreamTracerProvider.Shutdown(ctx); err != nil {
-			log.Printf("failed to cleanup otel trace provider: %s", err)
-		}
+		defer cleanupDownstream(ctx)
+		defer cleanupUpstream(ctx)
 	}()
 	cfg, err := config.LoadDefaultConfig(
 		setupCtx,
@@ -167,4 +150,27 @@ func graceful(ctx context.Context, servers ...*server) {
 		}(srv)
 	}
 	log.Print("shutdown server")
+}
+
+var noop = func(context.Context) {}
+
+func setupTracerProvider(ctx context.Context, component string) (*sdktrace.TracerProvider, func(context.Context), error) {
+	opts := []tracing.Option{
+		tracing.WithHTTPExporter(),
+		tracing.WithDeploymentEnvironment(deploymentEnv),
+		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, component)),
+	}
+	if debug {
+		opts = append(opts, tracing.WithDebugExporter(os.Stderr))
+	}
+	tp, err := tracing.Setup(ctx, opts...)
+	if err != nil {
+		return nil, noop, fmt.Errorf("%s: tracing.Setup: %w", component, err)
+	}
+	cleanup := func(ctx context.Context) {
+		if err := tp.Shutdown(ctx); err != nil {
+			log.Printf("%s: failed to cleanup otel trace provider: %s", component, err)
+		}
+	}
+	return tp, cleanup, nil
 }
