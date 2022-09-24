@@ -1,0 +1,26 @@
+---
+
+receivers:
+  otlp:
+    protocols:
+      http:
+      grpc:
+processors:
+  batch:
+    send_batch_max_size: 1000
+    send_batch_size: 100
+    timeout: 10s
+exporters:
+  datadog:
+    api:
+      site: datadoghq.com
+      key: ${DD_API_KEY}
+service:
+  pipelines:
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - datadog
