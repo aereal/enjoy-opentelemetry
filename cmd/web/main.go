@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -75,7 +76,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
-	upstreamApp, err := upstream.New(upstreamTracerProvider)
+	rt := otelhttp.NewTransport(
+		&tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport},
+		otelhttp.WithTracerProvider(upstreamTracerProvider),
+	)
+	upstreamApp, err := upstream.New(upstreamTracerProvider, &http.Client{Transport: rt}, fmt.Sprintf("http://localhost:%d", downstreamPort))
 	if err != nil {
 		return fmt.Errorf("upstream.New: %w", err)
 	}

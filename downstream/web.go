@@ -16,12 +16,14 @@ func New(tp trace.TracerProvider, stsClient *sts.Client) (*App, error) {
 	if stsClient == nil {
 		return nil, errors.New("stsClient is nil")
 	}
-	return &App{stsClient: stsClient, tp: tp}, nil
+	tracer := tp.Tracer("downstream")
+	return &App{stsClient: stsClient, tp: tp, tracer: tracer}, nil
 }
 
 type App struct {
 	stsClient *sts.Client
 	tp        trace.TracerProvider
+	tracer    trace.Tracer
 }
 
 func (*App) handleRoot() http.Handler {
@@ -31,14 +33,17 @@ func (*App) handleRoot() http.Handler {
 	})
 }
 
-func (*App) handleUser() http.Handler {
+func (app *App) handleUser() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		data := struct{ ID string }{}
-		params := httptreemux.ContextParams(r.Context())
+		ctx := r.Context()
+		params := httptreemux.ContextParams(ctx)
 		if id, ok := params["id"]; ok {
 			data.ID = id
 		}
+		_, span := app.tracer.Start(ctx, "createResponse")
+		defer span.End()
 		_ = json.NewEncoder(w).Encode(data)
 	})
 }
