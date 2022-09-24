@@ -15,6 +15,7 @@ import (
 
 	"github.com/aereal/enjoy-opentelemetry/downstream"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
+	"github.com/aereal/enjoy-opentelemetry/upstream"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
@@ -116,12 +117,16 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
+	upstreamApp, err := upstream.New()
+	if err != nil {
+		return fmt.Errorf("upstream.New: %w", err)
+	}
 	servers := []*server{
 		{
 			label: "upstream",
 			srv: &http.Server{
 				Addr:    fmt.Sprintf(":%d", upstreamPort),
-				Handler: withTrace(upstreamTracerProvider)(buildUpstreamHandler()),
+				Handler: withTrace(upstreamTracerProvider)(upstreamApp.Handler()),
 			},
 		},
 		{
@@ -150,15 +155,6 @@ func run() error {
 		return err
 	}
 	return nil
-}
-
-func buildUpstreamHandler() http.Handler {
-	mux := httptreemux.NewContextMux()
-	mux.GET("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		fmt.Fprintln(w, `{"name":"upstream","ok":true}`)
-	}))
-	return mux
 }
 
 func main() {
