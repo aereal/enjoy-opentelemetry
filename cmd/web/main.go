@@ -22,7 +22,6 @@ import (
 	"github.com/dimfeld/httptreemux/v5"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
@@ -30,7 +29,6 @@ import (
 
 var (
 	shutdownTimeout  = time.Second * 5
-	httpClient       = otelhttp.DefaultClient
 	attrResourceName = attribute.Key("resource.name")
 
 	upstreamPort   int
@@ -44,7 +42,7 @@ func init() {
 	flag.StringVar(&deploymentEnv, "env", "local", "deployment environment")
 }
 
-func withTrace() func(http.Handler) http.Handler {
+func withTrace(tp trace.TracerProvider) func(http.Handler) http.Handler {
 	formatter := otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
 		if routeKey := httptreemux.ContextRoute(r.Context()); routeKey != "" {
 			return routeKey
@@ -55,6 +53,7 @@ func withTrace() func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			opts := []otelhttp.Option{
 				formatter,
+				otelhttp.WithTracerProvider(tp),
 			}
 			if routeKey := httptreemux.ContextRoute(r.Context()); routeKey != "" {
 				opts = append(opts, otelhttp.WithSpanOptions(trace.WithAttributes(attrResourceName.String(routeKey))))
@@ -68,27 +67,42 @@ func withTrace() func(http.Handler) http.Handler {
 func run() error {
 	flag.Parse()
 	setupCtx := context.Background()
-	tp, err := tracing.Setup(
+	upstreamTracerProvider, err := tracing.Setup(
 		setupCtx,
 		tracing.WithDebugExporter(os.Stderr),
 		tracing.WithHTTPExporter(),
 		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName("enjoy-opentelemetry"),
+		tracing.WithResourceName("enjoy-opentelemetry-upstream"),
 	)
 	if err != nil {
-		return fmt.Errorf("tracing.Setup: %w", err)
+		return fmt.Errorf("upstream: tracing.Setup: %w", err)
 	}
-	otel.SetTracerProvider(tp)
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		if err := tp.Shutdown(ctx); err != nil {
+		if err := upstreamTracerProvider.Shutdown(ctx); err != nil {
+			log.Printf("failed to cleanup otel trace provider: %s", err)
+		}
+	}()
+	downstreamTracerProvider, err := tracing.Setup(
+		setupCtx,
+		tracing.WithDebugExporter(os.Stderr),
+		tracing.WithHTTPExporter(),
+		tracing.WithDeploymentEnvironment(deploymentEnv),
+		tracing.WithResourceName("enjoy-opentelemetry-downstream"),
+	)
+	if err != nil {
+		return fmt.Errorf("downstream: tracing.Setup: %w", err)
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := downstreamTracerProvider.Shutdown(ctx); err != nil {
 			log.Printf("failed to cleanup otel trace provider: %s", err)
 		}
 	}()
 	cfg, err := config.LoadDefaultConfig(
 		setupCtx,
-		config.WithHTTPClient(httpClient),
 		config.WithEndpointDiscovery(aws.EndpointDiscoveryDisabled),
 		config.WithEC2IMDSClientEnableState(imds.ClientDisabled),
 		config.WithEC2RoleCredentialOptions(nil),
@@ -96,7 +110,7 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("config.LoadDefaultConfig: %w", err)
 	}
-	otelaws.AppendMiddlewares(&cfg.APIOptions)
+	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(downstreamTracerProvider))
 	stsClient := sts.NewFromConfig(cfg)
 	downstreamApp, err := downstream.New(stsClient)
 	if err != nil {
@@ -107,14 +121,14 @@ func run() error {
 			label: "upstream",
 			srv: &http.Server{
 				Addr:    fmt.Sprintf(":%d", upstreamPort),
-				Handler: buildUpstreamHandler(),
+				Handler: withTrace(upstreamTracerProvider)(buildUpstreamHandler()),
 			},
 		},
 		{
 			label: "downstream",
 			srv: &http.Server{
 				Addr:    fmt.Sprintf(":%d", downstreamPort),
-				Handler: withTrace()(downstreamApp.Handler()),
+				Handler: withTrace(downstreamTracerProvider)(downstreamApp.Handler()),
 			},
 		},
 	}
