@@ -132,3 +132,22 @@ func Middleware(tp trace.TracerProvider) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+type ResourceOverriderRoundTripper struct {
+	Base http.RoundTripper
+}
+
+var _ http.RoundTripper = (*ResourceOverriderRoundTripper)(nil)
+
+func (rt *ResourceOverriderRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	span := trace.SpanFromContext(r.Context())
+
+	userinfo := r.URL.User
+	r.URL.User = nil
+	defer func() {
+		r.URL.User = userinfo
+	}()
+
+	span.SetAttributes(attrResourceName.String(r.URL.String()))
+	return rt.Base.RoundTrip(r)
+}
