@@ -22,6 +22,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/propagators/aws/xray"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/sync/errgroup"
 )
@@ -46,6 +49,7 @@ func init() {
 
 func run() error {
 	flag.Parse()
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, xray.Propagator{}))
 	setupCtx := context.Background()
 	upstreamTracerProvider, cleanupUpstream, err := setupTracerProvider(setupCtx, "upstream")
 	if err != nil {

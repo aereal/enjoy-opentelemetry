@@ -10,6 +10,7 @@ require (
 	github.com/dimfeld/httptreemux/v5 v5.4.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.36.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.0
+	go.opentelemetry.io/contrib/propagators/aws v1.10.0
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.10.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.10.0
