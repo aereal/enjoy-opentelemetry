@@ -1,0 +1,24 @@
+---
+
+name: CI (cdktf)
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'npm'
+      - run: npm ci
+      - name: build
+        run: npm run synth
+        env:
+          APP_IMAGE_TAG: latest
+          APP_VPC_ID: vpc-xxx
+          APP_SUBNET_IDS: subnet-a,subnet-b
