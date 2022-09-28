@@ -1,0 +1,34 @@
+---
+
+name: CI (Go)
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.0.2
+      - uses: reviewdog/action-golangci-lint@v2.1.7
+        with:
+          level: warning
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - ./cmd/web
+          - ./cmd/upstream
+          - ./cmd/downstream
+    steps:
+      - uses: actions/checkout@v3.0.2
+      - uses: actions/setup-go@v3.1.0
+        with:
+          go-version: 1.19
+          cache: true
+      - name: build
+        run: go build -o out $target
+        env:
+          target: ${{ matrix.target }}
