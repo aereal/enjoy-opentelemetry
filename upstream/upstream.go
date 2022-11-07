@@ -8,9 +8,11 @@ import (
 	"net/textproto"
 	"net/url"
 
+	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/dimfeld/httptreemux/v5"
 	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 )
 
 func New(tp trace.TracerProvider, client *http.Client, downstreamOrigin string) (*App, error) {
@@ -42,6 +44,8 @@ func (*App) handleHealthCheck() http.Handler {
 
 func (*App) handleRoot() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, logger := log.FromContext(r.Context())
+		logger.Info("handle /", zap.String("xray_trace_id", r.Header.Get("X-Amzn-Trace-Id")))
 		w.Header().Set("content-type", "application/json")
 		fmt.Fprintln(w, `{"name":"upstream","ok":true}`)
 	})
