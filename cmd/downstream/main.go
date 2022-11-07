@@ -36,7 +36,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&downstreamPort, "downstream-port", "8081", "downstream server port")
+	flag.StringVar(&downstreamPort, "downstream-port", os.Getenv("PORT"), "downstream server port")
 	flag.StringVar(&deploymentEnv, "env", os.Getenv("APP_ENV"), "deployment environment")
 	flag.StringVar(&serviceName, "service", os.Getenv("APP_SERVICE_NAME"), "service name")
 	flag.BoolVar(&debug, "debug", envDebug != "", "debug mode")
@@ -66,6 +66,7 @@ func run() error {
 	}
 	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(downstreamTracerProvider))
 	stsClient := sts.NewFromConfig(cfg)
+	log.Printf("port=%s env=%s service=%s debug=%v", downstreamPort, deploymentEnv, serviceName, debug)
 	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
