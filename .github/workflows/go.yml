@@ -33,6 +33,7 @@ jobs:
         env:
           target: ${{ matrix.target }}
   publish-image:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs:
       - build

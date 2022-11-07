@@ -33,6 +33,13 @@ type App struct {
 	downstreamOrigin *url.URL
 }
 
+func (*App) handleHealthCheck() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprintln(w, `{"name":"upstream","ok":true}`)
+	})
+}
+
 func (*App) handleRoot() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -117,5 +124,6 @@ func (app *App) Handler() http.Handler {
 	mux.UseHandler(tracing.Middleware(app.tp))
 	mux.Handler(http.MethodGet, "/", app.handleRoot())
 	mux.Handler(http.MethodGet, "/proxy", app.handleProxy())
+	mux.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
 	return mux
 }
