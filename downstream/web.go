@@ -26,6 +26,13 @@ type App struct {
 	tracer    trace.Tracer
 }
 
+func (*App) handleHealthCheck() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprintln(w, `{"name":"downstream","ok":true}`)
+	})
+}
+
 func (*App) handleRoot() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
@@ -86,5 +93,6 @@ func (app *App) Handler() http.Handler {
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/me", app.handleMe())
 	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
+	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
 	return router
 }
