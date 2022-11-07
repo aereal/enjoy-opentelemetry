@@ -66,6 +66,7 @@ func run() error {
 	}
 	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(downstreamTracerProvider))
 	stsClient := sts.NewFromConfig(cfg)
+	log.Printf("port=%s env=%s service=%s debug=%v", downstreamPort, deploymentEnv, serviceName, debug)
 	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)

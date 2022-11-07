@@ -57,6 +57,7 @@ func run() error {
 		&tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport},
 		otelhttp.WithTracerProvider(upstreamTracerProvider),
 	)
+	log.Printf("port=%s downstreamOrigin=%s env=%s service=%s debug=%v", upstreamPort, downstreamOrigin, deploymentEnv, serviceName, debug)
 	upstreamApp, err := upstream.New(
 		upstreamTracerProvider,
 		&http.Client{Transport: rt},
