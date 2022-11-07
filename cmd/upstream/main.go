@@ -43,7 +43,7 @@ func init() {
 
 func run() error {
 	flag.Parse()
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, xray.Propagator{}))
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(xray.Propagator{}))
 	setupCtx, logger := log.FromContext(context.Background())
 	upstreamTracerProvider, cleanupUpstream, err := setupTracerProvider(setupCtx, "upstream")
 	if err != nil {
