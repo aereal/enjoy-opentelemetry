@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aereal/enjoy-opentelemetry/downstream"
+	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
 )
 
 var (
@@ -45,7 +46,7 @@ func init() {
 func run() error {
 	flag.Parse()
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, xray.Propagator{}))
-	setupCtx := context.Background()
+	setupCtx, logger := log.FromContext(context.Background())
 	downstreamTracerProvider, cleanupDownstream, err := setupTracerProvider(setupCtx, "downstream")
 	if err != nil {
 		return err
@@ -66,7 +67,13 @@ func run() error {
 	}
 	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(downstreamTracerProvider))
 	stsClient := sts.NewFromConfig(cfg)
-	log.Printf("port=%s env=%s service=%s debug=%v", downstreamPort, deploymentEnv, serviceName, debug)
+	logger.Info(
+		"start server",
+		zap.String("component", "downstream"),
+		zap.String("env", deploymentEnv),
+		zap.String("service", serviceName),
+		zap.String("port", downstreamPort),
+		zap.Bool("debug", debug))
 	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
@@ -78,7 +85,7 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	go graceful(ctx, downstreamSrv)
-	log.Printf("listening on %s", downstreamSrv.Addr)
+	logger.Info("start listening", zap.String("addr", downstreamSrv.Addr))
 	if err := downstreamSrv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
@@ -87,7 +94,7 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		log.Printf("! %+v", err)
+		fmt.Fprintf(os.Stderr, "! %+v\n", err)
 		exitCode := 1
 		if err, ok := err.(interface{ ExitCode() int }); ok {
 			exitCode = err.ExitCode()
@@ -97,16 +104,17 @@ func main() {
 }
 
 func graceful(ctx context.Context, srv *http.Server) {
+	ctx, logger := log.FromContext(ctx)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	sig := <-quit
-	log.Printf("received signal: %q", sig)
+	logger.Info("received signal", zap.Stringer("signal", sig))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("failed to gracefully shutdown server: %s", err)
+		logger.Error("failed to gracefully shutdown server", zap.Error(err))
 	}
-	log.Print("shutdown server")
+	logger.Info("shutting down server")
 }
 
 var noop = func(context.Context) {}
@@ -126,7 +134,8 @@ func setupTracerProvider(ctx context.Context, component string) (*sdktrace.Trace
 	}
 	cleanup := func(ctx context.Context) {
 		if err := tp.Shutdown(ctx); err != nil {
-			log.Printf("%s: failed to cleanup otel trace provider: %s", component, err)
+			_, logger := log.FromContext(ctx)
+			logger.Error("failed to cleanup otel trace provider", zap.String("component", component), zap.Error(err))
 		}
 	}
 	return tp, cleanup, nil
