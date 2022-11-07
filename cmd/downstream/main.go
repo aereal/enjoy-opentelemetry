@@ -36,7 +36,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&downstreamPort, "downstream-port", "8081", "downstream server port")
+	flag.StringVar(&downstreamPort, "downstream-port", os.Getenv("PORT"), "downstream server port")
 	flag.StringVar(&deploymentEnv, "env", os.Getenv("APP_ENV"), "deployment environment")
 	flag.StringVar(&serviceName, "service", os.Getenv("APP_SERVICE_NAME"), "service name")
 	flag.BoolVar(&debug, "debug", envDebug != "", "debug mode")
