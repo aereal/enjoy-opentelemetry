@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.21
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7
 	github.com/dimfeld/httptreemux/v5 v5.5.0
+	github.com/ravilushqa/otelgqlgen v0.10.0
 	github.com/vektah/gqlparser/v2 v2.5.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.37.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
@@ -41,8 +42,12 @@ require (
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	go.opentelemetry.io/contrib v1.10.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.11.2 // indirect
 	go.opentelemetry.io/otel/metric v0.34.0 // indirect

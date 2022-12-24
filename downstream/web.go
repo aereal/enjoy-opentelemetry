@@ -6,10 +6,17 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/aereal/enjoy-opentelemetry/graph"
+	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dimfeld/httptreemux/v5"
+	"github.com/ravilushqa/otelgqlgen"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -35,13 +42,18 @@ func (*App) handleHealthCheck() http.Handler {
 	})
 }
 
+func (*App) handleGraphql() http.Handler {
+	srv := handler.New(graph.NewExecutableSchema(graph.Config{
+		Resolvers: &resolvers.Resolver{},
+	}))
+	srv.AddTransport(transport.POST{})
+	srv.Use(extension.Introspection{})
+	srv.Use(otelgqlgen.Middleware())
+	return srv
+}
+
 func (*App) handleRoot() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, logger := log.FromContext(r.Context())
-		logger.Info("handle /", zap.String("xray_trace_id", r.Header.Get("X-Amzn-Trace-Id")))
-		w.Header().Set("content-type", "application/json")
-		fmt.Fprintln(w, `{"ok":true}`)
-	})
+	return playground.Handler("GraphQL playground", "/graphql")
 }
 
 func (app *App) handleUser() http.Handler {
@@ -100,5 +112,6 @@ func (app *App) Handler() http.Handler {
 	router.Handler(http.MethodGet, "/me", app.handleMe())
 	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
+	router.Handler(http.MethodPost, "/graphql", app.handleGraphql())
 	return router
 }
