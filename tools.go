@@ -1,6 +1,6 @@
-//go:build +tools
+//go:build tools
 
-package enjoyotel
+package tools
 
 import (
 	_ "github.com/99designs/gqlgen"
