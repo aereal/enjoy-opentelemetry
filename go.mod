@@ -4,11 +4,14 @@ go 1.19
 
 require (
 	github.com/99designs/gqlgen v0.17.22
+	github.com/XSAM/otelsql v0.17.1
 	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.7
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.21
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7
 	github.com/dimfeld/httptreemux/v5 v5.5.0
+	github.com/go-sql-driver/mysql v1.7.0
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/ravilushqa/otelgqlgen v0.10.0
 	github.com/vektah/gqlparser/v2 v2.5.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.37.0

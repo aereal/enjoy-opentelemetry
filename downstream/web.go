@@ -21,18 +21,22 @@ import (
 	"go.uber.org/zap"
 )
 
-func New(tp trace.TracerProvider, stsClient *sts.Client) (*App, error) {
+func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers.Resolver) (*App, error) {
 	if stsClient == nil {
 		return nil, errors.New("stsClient is nil")
 	}
+	if rootResolver == nil {
+		return nil, errors.New("rootResolver is nil")
+	}
 	tracer := tp.Tracer("downstream")
-	return &App{stsClient: stsClient, tp: tp, tracer: tracer}, nil
+	return &App{stsClient: stsClient, tp: tp, tracer: tracer, resolver: rootResolver}, nil
 }
 
 type App struct {
 	stsClient *sts.Client
 	tp        trace.TracerProvider
 	tracer    trace.Tracer
+	resolver  *resolvers.Resolver
 }
 
 func (*App) handleHealthCheck() http.Handler {
@@ -44,7 +48,7 @@ func (*App) handleHealthCheck() http.Handler {
 
 func (a *App) handleGraphql() http.Handler {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
-		Resolvers: &resolvers.Resolver{},
+		Resolvers: a.resolver,
 	}))
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})

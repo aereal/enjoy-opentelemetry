@@ -11,7 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aereal/enjoy-opentelemetry/adapters/db"
 	"github.com/aereal/enjoy-opentelemetry/downstream"
+	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -74,7 +76,15 @@ func run() error {
 		zap.String("service", serviceName),
 		zap.String("port", downstreamPort),
 		zap.Bool("debug", debug))
-	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient)
+	dbx, err := db.New(downstreamTracerProvider, os.Getenv("DSN"))
+	if err != nil {
+		return fmt.Errorf("db.New: %w", err)
+	}
+	rootResolver, err := resolvers.New(dbx)
+	if err != nil {
+		return fmt.Errorf("resolvers.New: %w", err)
+	}
+	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient, rootResolver)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
