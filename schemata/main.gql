@@ -1,0 +1,8 @@
+type Liver {
+  name: String!
+  age: Int
+}
+
+type Query {
+  liver(name: String!): Liver
+}

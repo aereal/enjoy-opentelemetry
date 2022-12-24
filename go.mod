@@ -3,11 +3,13 @@ module github.com/aereal/enjoy-opentelemetry
 go 1.19
 
 require (
+	github.com/99designs/gqlgen v0.17.22
 	github.com/aws/aws-sdk-go-v2 v1.17.3
 	github.com/aws/aws-sdk-go-v2/config v1.18.7
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.12.21
 	github.com/aws/aws-sdk-go-v2/service/sts v1.17.7
 	github.com/dimfeld/httptreemux/v5 v5.5.0
+	github.com/vektah/gqlparser/v2 v2.5.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws v0.37.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.37.0
 	go.opentelemetry.io/contrib/propagators/aws v1.12.0
@@ -21,6 +23,7 @@ require (
 )
 
 require (
+	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.7 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.27 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.21 // indirect
