@@ -6,3 +6,7 @@ type Liver {
 type Query {
   liver(name: String!): Liver
 }
+
+type Mutation {
+  registerLiver(name: String!): Boolean!
+}

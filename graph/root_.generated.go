@@ -29,6 +29,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Mutation() MutationResolver
 	Query() QueryResolver
 }
 
@@ -39,6 +40,10 @@ type ComplexityRoot struct {
 	Liver struct {
 		Age  func(childComplexity int) int
 		Name func(childComplexity int) int
+	}
+
+	Mutation struct {
+		RegisterLiver func(childComplexity int, name string) int
 	}
 
 	Query struct {
@@ -75,6 +80,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Liver.Name(childComplexity), true
 
+	case "Mutation.registerLiver":
+		if e.complexity.Mutation.RegisterLiver == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_registerLiver_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RegisterLiver(childComplexity, args["name"].(string)), true
+
 	case "Query.liver":
 		if e.complexity.Query.Liver == nil {
 			break
@@ -106,6 +123,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 			first = false
 			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
 			data := ec._Query(ctx, rc.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
+			data := ec._Mutation(ctx, rc.Operation.SelectionSet)
 			var buf bytes.Buffer
 			data.MarshalGQL(&buf)
 
@@ -146,6 +178,10 @@ var sources = []*ast.Source{
 
 type Query {
   liver(name: String!): Liver
+}
+
+type Mutation {
+  registerLiver(name: String!): Boolean!
 }
 `, BuiltIn: false},
 }

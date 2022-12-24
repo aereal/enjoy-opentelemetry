@@ -12,6 +12,18 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
 )
 
+// RegisterLiver is the resolver for the registerLiver field.
+func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool, error) {
+	values := struct {
+		Name string `db:"name"`
+	}{Name: name}
+	_, err := r.dbx.NamedExecContext(ctx, "insert into livers (name) values (:name)", values)
+	if err != nil {
+		return false, fmt.Errorf("NamedExecContext: %w", err)
+	}
+	return true, nil
+}
+
 // Liver is the resolver for the liver field.
 func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, error) {
 	var liver models.Liver
@@ -21,7 +33,11 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, 
 	return &liver, nil
 }
 
+// Mutation returns graph.MutationResolver implementation.
+func (r *Resolver) Mutation() graph.MutationResolver { return &mutationResolver{r} }
+
 // Query returns graph.QueryResolver implementation.
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
+type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
