@@ -42,13 +42,13 @@ func (*App) handleHealthCheck() http.Handler {
 	})
 }
 
-func (*App) handleGraphql() http.Handler {
+func (a *App) handleGraphql() http.Handler {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &resolvers.Resolver{},
 	}))
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
-	srv.Use(otelgqlgen.Middleware())
+	srv.Use(otelgqlgen.Middleware(otelgqlgen.WithTracerProvider(a.tp)))
 	return srv
 }
 
