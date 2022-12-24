@@ -14,7 +14,11 @@ import (
 
 // Liver is the resolver for the liver field.
 func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, error) {
-	panic(fmt.Errorf("not implemented: Liver - liver"))
+	var liver models.Liver
+	if err := r.dbx.GetContext(ctx, &liver, "select * from livers where name = ? limit 1", name); err != nil {
+		return nil, fmt.Errorf("GetContext: %w", err)
+	}
+	return &liver, nil
 }
 
 // Query returns graph.QueryResolver implementation.
