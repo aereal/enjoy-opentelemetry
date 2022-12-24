@@ -1,0 +1,14 @@
+---
+
+version: '3'
+services:
+  db:
+    image: 'public.ecr.aws/ubuntu/mysql:latest'
+    environment:
+      TZ: 'Asia/Tokyo'
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+      MYSQL_DATABASE: 'enjoyotel'
+    ports:
+      - '33306:3306'
+    volumes:
+      - './db/data:/var/lib/mysql'
