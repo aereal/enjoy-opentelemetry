@@ -10,7 +10,7 @@ import (
 )
 
 func New(tp trace.TracerProvider, dsn string) (*sqlx.DB, error) {
-	db, err := otelsql.Open("mysql", dsn, otelsql.WithTracerProvider(tp))
+	db, err := otelsql.Open("mysql", dsn, otelsql.WithTracerProvider(tp), otelsql.WithSpanOptions(otelsql.SpanOptions{DisableErrSkip: true}))
 	if err != nil {
 		return nil, fmt.Errorf("otelsql.Open: %w", err)
 	}
