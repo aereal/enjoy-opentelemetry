@@ -15,6 +15,10 @@ exporters:
     api:
       site: datadoghq.com
       key: ${DD_API_KEY}
+  zipkin:
+    endpoint: '${ZIPKIN_ORIGIN}/api/v2/spans'
+    tls:
+      insecure: true
 service:
   pipelines:
     traces:
@@ -24,3 +28,4 @@ service:
         - batch
       exporters:
         - datadog
+        - zipkin
