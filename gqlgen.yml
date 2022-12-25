@@ -15,3 +15,7 @@ resolver:
   package: resolvers
   filename_template: "{name}.resolvers.go"
 skip_mod_tidy: true
+models:
+  Liver:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.Liver
