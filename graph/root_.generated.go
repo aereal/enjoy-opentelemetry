@@ -9,6 +9,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/aereal/enjoy-opentelemetry/graph/models"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -29,6 +30,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	LiverEdge() LiverEdgeResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
 }
@@ -42,12 +44,30 @@ type ComplexityRoot struct {
 		Name func(childComplexity int) int
 	}
 
+	LiverConnection struct {
+		Edges    func(childComplexity int) int
+		PageInfo func(childComplexity int) int
+	}
+
+	LiverEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
 	Mutation struct {
 		RegisterLiver func(childComplexity int, name string) int
 	}
 
+	PageInfo struct {
+		EndCursor       func(childComplexity int) int
+		HasNextPage     func(childComplexity int) int
+		HasPreviousPage func(childComplexity int) int
+		StartCursor     func(childComplexity int) int
+	}
+
 	Query struct {
-		Liver func(childComplexity int, name string) int
+		Liver  func(childComplexity int, name string) int
+		Livers func(childComplexity int, first *int, after *string, orderBy *models.LiverOrder) int
 	}
 }
 
@@ -80,6 +100,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Liver.Name(childComplexity), true
 
+	case "LiverConnection.edges":
+		if e.complexity.LiverConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.LiverConnection.Edges(childComplexity), true
+
+	case "LiverConnection.pageInfo":
+		if e.complexity.LiverConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.LiverConnection.PageInfo(childComplexity), true
+
+	case "LiverEdge.cursor":
+		if e.complexity.LiverEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.LiverEdge.Cursor(childComplexity), true
+
+	case "LiverEdge.node":
+		if e.complexity.LiverEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.LiverEdge.Node(childComplexity), true
+
 	case "Mutation.registerLiver":
 		if e.complexity.Mutation.RegisterLiver == nil {
 			break
@@ -91,6 +139,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RegisterLiver(childComplexity, args["name"].(string)), true
+
+	case "PageInfo.endCursor":
+		if e.complexity.PageInfo.EndCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.EndCursor(childComplexity), true
+
+	case "PageInfo.hasNextPage":
+		if e.complexity.PageInfo.HasNextPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasNextPage(childComplexity), true
+
+	case "PageInfo.hasPreviousPage":
+		if e.complexity.PageInfo.HasPreviousPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasPreviousPage(childComplexity), true
+
+	case "PageInfo.startCursor":
+		if e.complexity.PageInfo.StartCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.StartCursor(childComplexity), true
 
 	case "Query.liver":
 		if e.complexity.Query.Liver == nil {
@@ -104,6 +180,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Liver(childComplexity, args["name"].(string)), true
 
+	case "Query.livers":
+		if e.complexity.Query.Livers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_livers_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Livers(childComplexity, args["first"].(*int), args["after"].(*string), args["orderBy"].(*models.LiverOrder)), true
+
 	}
 	return 0, false
 }
@@ -111,7 +199,9 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e}
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputLiverOrder,
+	)
 	first := true
 
 	switch rc.Operation.Operation {
@@ -176,8 +266,44 @@ var sources = []*ast.Source{
   age: Int
 }
 
+type PageInfo {
+  hasPreviousPage: Boolean!
+  hasNextPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type LiverEdge {
+  node: Liver!
+  cursor: String!
+}
+
+type LiverConnection {
+  edges: [LiverEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+enum LiverOrderField {
+  DATABASE_ID
+}
+
+input LiverOrder {
+  field: LiverOrderField!
+  direction: OrderDirection!
+}
+
 type Query {
   liver(name: String!): Liver
+  livers(
+    first: Int = 0,
+    after: String,
+    orderBy: LiverOrder
+  ): LiverConnection!
 }
 
 type Mutation {

@@ -3,8 +3,44 @@ type Liver {
   age: Int
 }
 
+type PageInfo {
+  hasPreviousPage: Boolean!
+  hasNextPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type LiverEdge {
+  node: Liver!
+  cursor: String!
+}
+
+type LiverConnection {
+  edges: [LiverEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+enum LiverOrderField {
+  DATABASE_ID
+}
+
+input LiverOrder {
+  field: LiverOrderField!
+  direction: OrderDirection!
+}
+
 type Query {
   liver(name: String!): Liver
+  livers(
+    first: Int = 0,
+    after: String,
+    orderBy: LiverOrder
+  ): LiverConnection!
 }
 
 type Mutation {

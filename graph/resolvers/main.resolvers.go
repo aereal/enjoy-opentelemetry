@@ -12,6 +12,11 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
 )
 
+// Node is the resolver for the node field.
+func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error) {
+	return obj.Liver, nil
+}
+
 // RegisterLiver is the resolver for the registerLiver field.
 func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool, error) {
 	values := struct {
@@ -33,11 +38,40 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, 
 	return &liver, nil
 }
 
+// Livers is the resolver for the livers field.
+func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, orderBy *models.LiverOrder) (*models.LiverConnection, error) {
+	if first == nil || *first <= 0 {
+		return &models.LiverConnection{}, nil
+	}
+	firstInt := *first
+	if orderBy == nil {
+		orderBy = &models.LiverOrder{
+			Field:     models.LiverOrderFieldDatabaseID,
+			Direction: models.OrderDirectionAsc,
+		}
+	}
+	limit := firstInt + 1
+	edges := make([]*models.LiverEdge, 0, limit)
+	query := fmt.Sprintf(`select * from livers %s limit %d`, toOrderBy(orderBy), limit)
+	if err := r.dbx.SelectContext(ctx, &edges, query); err != nil {
+		return nil, fmt.Errorf("SelectContext: %w", err)
+	}
+	conn := &models.LiverConnection{
+		Edges:    models.NewEdges(edges, firstInt),
+		PageInfo: models.NewPageInfo(edges, firstInt),
+	}
+	return conn, nil
+}
+
+// LiverEdge returns graph.LiverEdgeResolver implementation.
+func (r *Resolver) LiverEdge() graph.LiverEdgeResolver { return &liverEdgeResolver{r} }
+
 // Mutation returns graph.MutationResolver implementation.
 func (r *Resolver) Mutation() graph.MutationResolver { return &mutationResolver{r} }
 
 // Query returns graph.QueryResolver implementation.
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
+type liverEdgeResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

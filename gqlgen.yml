@@ -19,3 +19,6 @@ models:
   Liver:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.Liver
+  LiverEdge:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverEdge
