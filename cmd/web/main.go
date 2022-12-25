@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,6 +15,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/adapters/db"
 	"github.com/aereal/enjoy-opentelemetry/downstream"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
+	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aereal/enjoy-opentelemetry/upstream"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -116,12 +117,15 @@ func run() error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
+	ctx, logger := log.FromContext(ctx)
+	defer logger.Sync()
 	eg, ctx := errgroup.WithContext(ctx)
 	go graceful(ctx, servers...)
 	for _, srv := range servers {
+		l := logger.With(zap.String("server", srv.label))
 		srv := srv
 		eg.Go(func() error {
-			log.Printf("%s: listening on %s", srv.label, srv.srv.Addr)
+			l.Info("server started", zap.String("addr", srv.srv.Addr))
 			if err := srv.srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 				return fmt.Errorf("%s: %w", srv.label, err)
 			}
@@ -136,7 +140,7 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
-		log.Printf("! %+v", err)
+		fmt.Printf("! %+v", err)
 		exitCode := 1
 		if err, ok := err.(interface{ ExitCode() int }); ok {
 			exitCode = err.ExitCode()
@@ -154,21 +158,23 @@ func graceful(ctx context.Context, servers ...*server) {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	sig := <-quit
-	log.Printf("received signal: %q", sig)
+	ctx, logger := log.FromContext(ctx)
+	logger.Info("received signal", zap.Stringer("signal", sig))
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	var wg sync.WaitGroup
 	for _, srv := range servers {
 		srv := srv
+		l := logger.With(zap.String("server", srv.label))
 		wg.Add(1)
 		go func(srv *server) {
 			if err := srv.srv.Shutdown(ctx); err != nil {
-				log.Printf("%s: failed to gracefully shutdown server: %s", srv.label, err)
+				l.Warn("failed to gracefully shutdown server", zap.Error(err))
 			}
 			defer wg.Done()
 		}(srv)
 	}
-	log.Print("shutdown server")
+	logger.Info("shutdown server")
 }
 
 var noop = func(context.Context) {}
@@ -188,7 +194,8 @@ func setupTracerProvider(ctx context.Context, component string) (*sdktrace.Trace
 	}
 	cleanup := func(ctx context.Context) {
 		if err := tp.Shutdown(ctx); err != nil {
-			log.Printf("%s: failed to cleanup otel trace provider: %s", component, err)
+			_, logger := log.FromContext(ctx)
+			logger.Info("failed to cleanup otel trace provider", zap.String("server", component), zap.Error(err))
 		}
 	}
 	return tp, cleanup, nil
