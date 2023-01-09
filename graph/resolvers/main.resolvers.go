@@ -52,10 +52,23 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, o
 			Direction: models.OrderDirectionAsc,
 		}
 	}
+	cursor := models.EmptyLiverCursor()
+	if after != nil {
+		var err error
+		cursor, err = models.NewLiverCursorFrom(*after)
+		if err != nil {
+			return nil, err
+		}
+	}
 	limit := firstInt + 1
 	edges := make([]*models.LiverEdge, 0, limit)
+	args := make([]any, 0, 1)
 	query := fmt.Sprintf(`select * from livers %s limit %d`, toOrderBy(orderBy), limit)
-	if err := r.dbx.SelectContext(ctx, &edges, query); err != nil {
+	if !cursor.IsEmpty() {
+		query = fmt.Sprintf(`select * from livers where liver_id > ? %s limit %d`, toOrderBy(orderBy), limit)
+		args = []any{cursor.LiverID}
+	}
+	if err := r.dbx.SelectContext(ctx, &edges, query, args...); err != nil {
 		return nil, fmt.Errorf("SelectContext: %w", err)
 	}
 	conn := &models.LiverConnection{

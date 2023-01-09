@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/base64"
-	"fmt"
+	"encoding/json"
 )
 
 type Edge interface {
@@ -49,10 +49,46 @@ type LiverEdge struct {
 var _ Edge = &LiverEdge{}
 
 func (e *LiverEdge) Cursor() string {
-	v := fmt.Sprintf(`{"liver_id":%q}`, e.ID)
-	return base64.StdEncoding.EncodeToString([]byte(v))
+	return (&LiverCursor{LiverID: e.ID}).Encode()
 }
 
 func ref[T any](v T) *T {
 	return &v
+}
+
+var (
+	cursorEncoding   = base64.StdEncoding
+	emptyLiverCursor = &LiverCursor{}
+)
+
+func EmptyLiverCursor() *LiverCursor {
+	return emptyLiverCursor
+}
+
+func NewLiverCursorFrom(v string) (*LiverCursor, error) {
+	b, err := cursorEncoding.DecodeString(v)
+	if err != nil {
+		return nil, err
+	}
+	var c LiverCursor
+	if err := json.Unmarshal(b, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+type LiverCursor struct {
+	LiverID uint64
+}
+
+func (c *LiverCursor) IsEmpty() bool {
+	return c == nil || c == emptyLiverCursor
+}
+
+func (c *LiverCursor) Encode() string {
+	b, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	return cursorEncoding.EncodeToString(b)
 }
