@@ -41,7 +41,9 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, 
 // Livers is the resolver for the livers field.
 func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, orderBy *models.LiverOrder) (*models.LiverConnection, error) {
 	if first == nil || *first <= 0 {
-		return &models.LiverConnection{}, nil
+		return &models.LiverConnection{
+			PageInfo: models.NewPageInfo[*models.LiverEdge](nil, 0),
+		}, nil
 	}
 	firstInt := *first
 	if orderBy == nil {
