@@ -14,9 +14,9 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
+	otelgqlgen "github.com/aereal/otelgqlgen"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dimfeld/httptreemux/v5"
-	"github.com/ravilushqa/otelgqlgen"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -52,7 +52,7 @@ func (a *App) handleGraphql() http.Handler {
 	}))
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
-	srv.Use(otelgqlgen.Middleware(otelgqlgen.WithTracerProvider(a.tp)))
+	srv.Use(otelgqlgen.New(otelgqlgen.WithTracerProvider(a.tp)))
 	return srv
 }
 
