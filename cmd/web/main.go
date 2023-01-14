@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -144,6 +145,9 @@ func run() error {
 			srv: &http.Server{
 				Addr:    fmt.Sprintf(":%d", downstreamPort),
 				Handler: downstreamApp.Handler(),
+				BaseContext: func(_ net.Listener) context.Context {
+					return context.WithValue(context.Background(), oauth2.HTTPClient, downstreamHTTPClient)
+				},
 			},
 		},
 	}
