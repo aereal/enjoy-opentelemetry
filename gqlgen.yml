@@ -22,3 +22,6 @@ models:
   LiverEdge:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.LiverEdge
+  Scope:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.Scope

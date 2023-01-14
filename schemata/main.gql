@@ -1,3 +1,9 @@
+directive @authenticate(scopes: [Scope!]) on FIELD_DEFINITION
+
+enum Scope {
+  WRITE
+}
+
 type Liver {
   name: String!
   age: Int

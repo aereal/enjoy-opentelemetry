@@ -36,6 +36,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	Authenticate func(ctx context.Context, obj interface{}, next graphql.Resolver, scopes []models.Scope) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -261,7 +262,13 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../schemata/main.gql", Input: `type Liver {
+	{Name: "../schemata/main.gql", Input: `directive @authenticate(scopes: [Scope!]) on FIELD_DEFINITION
+
+enum Scope {
+  WRITE
+}
+
+type Liver {
   name: String!
   age: Int
 }

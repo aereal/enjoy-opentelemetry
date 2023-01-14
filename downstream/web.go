@@ -12,6 +12,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/aereal/enjoy-opentelemetry/authz"
 	"github.com/aereal/enjoy-opentelemetry/graph"
+	"github.com/aereal/enjoy-opentelemetry/graph/directives"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
@@ -60,9 +61,11 @@ func (*App) handleHealthCheck() http.Handler {
 }
 
 func (a *App) handleGraphql() http.Handler {
-	srv := handler.New(graph.NewExecutableSchema(graph.Config{
-		Resolvers: a.resolver,
-	}))
+	cfg := graph.Config{
+		Resolvers:  a.resolver,
+		Directives: directives.New(directives.WithTracerProvider(a.tp)),
+	}
+	srv := handler.New(graph.NewExecutableSchema(cfg))
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
 	srv.Use(otelgqlgen.New(otelgqlgen.WithTracerProvider(a.tp)))

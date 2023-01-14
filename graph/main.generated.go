@@ -33,6 +33,21 @@ type QueryResolver interface {
 
 // region    ***************************** args.gotpl *****************************
 
+func (ec *executionContext) dir_authenticate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []models.Scope
+	if tmp, ok := rawArgs["scopes"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scopes"))
+		arg0, err = ec.unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["scopes"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_registerLiver_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1321,6 +1336,16 @@ func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋaerealᚋenjoyᚑ
 	return ec._PageInfo(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNScope2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScope(ctx context.Context, v interface{}) (models.Scope, error) {
+	var res models.Scope
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNScope2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScope(ctx context.Context, sel ast.SelectionSet, v models.Scope) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalOLiver2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiver(ctx context.Context, sel ast.SelectionSet, v *models.Liver) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -1334,6 +1359,73 @@ func (ec *executionContext) unmarshalOLiverOrder2ᚖgithubᚗcomᚋaerealᚋenjo
 	}
 	res, err := ec.unmarshalInputLiverOrder(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx context.Context, v interface{}) ([]models.Scope, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]models.Scope, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNScope2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScope(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx context.Context, sel ast.SelectionSet, v []models.Scope) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNScope2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScope(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 // endregion ***************************** type.gotpl *****************************
