@@ -6,10 +6,15 @@ package resolvers
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
+	"github.com/go-sql-driver/mysql"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Node is the resolver for the node field.
@@ -24,6 +29,11 @@ func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool
 	}{Name: name}
 	_, err := r.dbx.NamedExecContext(ctx, "insert into livers (name) values (:name)", values)
 	if err != nil {
+		var merr *mysql.MySQLError
+		if errors.As(err, &merr) {
+			span := trace.SpanFromContext(ctx)
+			span.SetAttributes(attribute.String("mysql.errors.number", strconv.FormatUint(uint64(merr.Number), 10)))
+		}
 		return false, fmt.Errorf("NamedExecContext: %w", err)
 	}
 	return true, nil
