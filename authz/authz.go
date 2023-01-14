@@ -5,19 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/aereal/enjoy-opentelemetry/authz/permission"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
 
 var (
 	ctxKey = struct{ name string }{"AuthenticatedToken"}
-
-	keyAllowedPermission = attribute.Key("authz.allowed_permission")
 )
 
 func AuthenticatedToken(ctx context.Context) jwt.Token {
@@ -115,8 +111,6 @@ func (mw *Middleware) Authenticate(next http.Handler, opts ...AuthenticateOption
 			cfg.errorHandler(w, http.StatusUnauthorized, err.Error())
 			return
 		}
-		permissions := permission.ParsePermissionClaim(token.Get("permissions"))
-		span.SetAttributes(keyAllowedPermission.StringSlice(permissions))
 		span.End()
 		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxKey, token)))
 	})
