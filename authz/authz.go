@@ -101,8 +101,8 @@ func (mw *Middleware) Authenticate(next http.Handler, opts ...AuthenticateOption
 		}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		ctx, span := mw.tracer.Start(ctx, "Authenticate")
+		parentCtx := r.Context()
+		ctx, span := mw.tracer.Start(parentCtx, "Authenticate")
 		token, err := parseToken(ctx, r, cfg)
 		if err != nil {
 			span.RecordError(err)
@@ -112,7 +112,7 @@ func (mw *Middleware) Authenticate(next http.Handler, opts ...AuthenticateOption
 			return
 		}
 		span.End()
-		next.ServeHTTP(w, r.WithContext(context.WithValue(ctx, ctxKey, token)))
+		next.ServeHTTP(w, r.WithContext(context.WithValue(parentCtx, ctxKey, token)))
 	})
 }
 

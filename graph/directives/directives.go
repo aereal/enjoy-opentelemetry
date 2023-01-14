@@ -45,8 +45,8 @@ func New(opts ...Option) graph.DirectiveRoot {
 
 	tracer := cfg.tracerProvider.Tracer("enjoy-opentelemetry/graph/directives")
 	root := graph.DirectiveRoot{}
-	root.Authenticate = func(ctx context.Context, obj any, next graphql.Resolver, scopes []models.Scope) (res any, err error) {
-		ctx, span := tracer.Start(ctx, "Authenticate")
+	root.Authenticate = func(parentCtx context.Context, obj any, next graphql.Resolver, scopes []models.Scope) (res any, err error) {
+		ctx, span := tracer.Start(parentCtx, "Authenticate")
 		defer func() {
 			if err != nil {
 				span.SetStatus(codes.Error, err.Error())
@@ -67,7 +67,7 @@ func New(opts ...Option) graph.DirectiveRoot {
 		if !allowedPermissions.IsSuperSetOf(requiredPermissions) {
 			return nil, ErrInsufficientPermission
 		}
-		return next(ctx)
+		return next(parentCtx)
 	}
 	return root
 }
