@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ctxKey = struct{}{}
+	ctxKey = struct{ name string }{"logger"}
 	cfg    = zap.Config{
 		Level:            zap.NewAtomicLevelAt(zapcore.InfoLevel),
 		Encoding:         "json",

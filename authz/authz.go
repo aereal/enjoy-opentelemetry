@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	ctxKey = struct{}{}
+	ctxKey = struct{ name string }{"AuthenticatedToken"}
 
 	keyAllowedPermission = attribute.Key("authz.allowed_permission")
 )
