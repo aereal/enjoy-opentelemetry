@@ -430,8 +430,32 @@ func (ec *executionContext) _Mutation_registerLiver(ctx context.Context, field g
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().RegisterLiver(rctx, fc.Args["name"].(string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().RegisterLiver(rctx, fc.Args["name"].(string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			scopes, err := ec.unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx, []interface{}{"WRITE"})
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authenticate == nil {
+				return nil, errors.New("directive authenticate is not implemented")
+			}
+			return ec.directives.Authenticate(ctx, nil, directive0, scopes)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(bool); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be bool`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -655,8 +679,32 @@ func (ec *executionContext) _Query_liver(ctx context.Context, field graphql.Coll
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Liver(rctx, fc.Args["name"].(string))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Liver(rctx, fc.Args["name"].(string))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			scopes, err := ec.unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx, []interface{}{"READ"})
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authenticate == nil {
+				return nil, errors.New("directive authenticate is not implemented")
+			}
+			return ec.directives.Authenticate(ctx, nil, directive0, scopes)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*models.Liver); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/aereal/enjoy-opentelemetry/graph/models.Liver`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -713,8 +761,32 @@ func (ec *executionContext) _Query_livers(ctx context.Context, field graphql.Col
 		}
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Livers(rctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["orderBy"].(*models.LiverOrder))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Livers(rctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["orderBy"].(*models.LiverOrder))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			scopes, err := ec.unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx, []interface{}{"READ"})
+			if err != nil {
+				return nil, err
+			}
+			if ec.directives.Authenticate == nil {
+				return nil, errors.New("directive authenticate is not implemented")
+			}
+			return ec.directives.Authenticate(ctx, nil, directive0, scopes)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*models.LiverConnection); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/aereal/enjoy-opentelemetry/graph/models.LiverConnection`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)

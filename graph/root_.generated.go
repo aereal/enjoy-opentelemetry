@@ -265,6 +265,7 @@ var sources = []*ast.Source{
 	{Name: "../schemata/main.gql", Input: `directive @authenticate(scopes: [Scope!]) on FIELD_DEFINITION
 
 enum Scope {
+  READ
   WRITE
 }
 
@@ -305,16 +306,16 @@ input LiverOrder {
 }
 
 type Query {
-  liver(name: String!): Liver
+  liver(name: String!): Liver @authenticate(scopes: [READ])
   livers(
     first: Int = 0,
     after: String,
     orderBy: LiverOrder
-  ): LiverConnection!
+  ): LiverConnection! @authenticate(scopes: [READ])
 }
 
 type Mutation {
-  registerLiver(name: String!): Boolean!
+  registerLiver(name: String!): Boolean! @authenticate(scopes: [WRITE])
 }
 `, BuiltIn: false},
 }

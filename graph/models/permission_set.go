@@ -86,6 +86,8 @@ func ParseScope(v string) (Scope, error) {
 	switch v {
 	case ScopeWrite.String():
 		return ScopeWrite, nil
+	case ScopeRead.String():
+		return ScopeRead, nil
 	default:
 		return InvalidScope, ErrInvalidScope
 	}
@@ -94,6 +96,7 @@ func ParseScope(v string) (Scope, error) {
 type Scope string
 
 const (
+	ScopeRead  Scope = "read"
 	ScopeWrite Scope = "write"
 )
 
@@ -103,7 +106,7 @@ var AllScope = []Scope{
 
 func (e Scope) IsValid() bool {
 	switch e {
-	case ScopeWrite:
+	case ScopeWrite, ScopeRead:
 		return true
 	}
 	return false
