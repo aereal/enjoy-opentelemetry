@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/aereal/enjoy-opentelemetry/adapters/db"
+	"github.com/aereal/enjoy-opentelemetry/authz"
+	"github.com/aereal/enjoy-opentelemetry/authz/oidcconfig"
 	"github.com/aereal/enjoy-opentelemetry/downstream"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
@@ -22,6 +25,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/lestrrat-go/jwx/v2/jws"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
@@ -29,6 +34,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -87,15 +93,41 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("resolvers.New: %w", err)
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient, rootResolver)
+	baseTransport := &tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport}
+	upstreamHTTPClient := &http.Client{
+		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(upstreamTracerProvider)),
+	}
+	downstreamHTTPClient := &http.Client{
+		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(downstreamTracerProvider)),
+	}
+	kp, err := oidcconfig.NewKeyProvider(
+		oidcconfig.WithHTTPClient(downstreamHTTPClient),
+		oidcconfig.WithIssuer(os.Getenv("AUTH0_ISSUER")),
+		oidcconfig.WithTracerProvider(downstreamTracerProvider),
+	)
+	if err != nil {
+		return err
+	}
+	mw := authz.New(
+		authz.WithTracerProvider(downstreamTracerProvider),
+		authz.WithTokenExtractor(authz.ExtractFromHeader("x-token")),
+		authz.WithVerifyOptions(jws.WithKeyProvider(kp)),
+		authz.WithValidateOptions(jwt.WithAudience(os.Getenv("AUTH0_AUDIENCE"))),
+	)
+	f, err := os.Open("./oauth2-client-config.json")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	var authConfig oauth2.Config
+	if err := json.NewDecoder(f).Decode(&authConfig); err != nil {
+		return err
+	}
+	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
-	rt := otelhttp.NewTransport(
-		&tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport},
-		otelhttp.WithTracerProvider(upstreamTracerProvider),
-	)
-	upstreamApp, err := upstream.New(upstreamTracerProvider, &http.Client{Transport: rt}, fmt.Sprintf("http://localhost:%d", downstreamPort))
+	upstreamApp, err := upstream.New(upstreamTracerProvider, upstreamHTTPClient, fmt.Sprintf("http://localhost:%d", downstreamPort))
 	if err != nil {
 		return fmt.Errorf("upstream.New: %w", err)
 	}

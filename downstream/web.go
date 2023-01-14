@@ -10,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/aereal/enjoy-opentelemetry/authz"
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
@@ -19,9 +20,10 @@ import (
 	"github.com/dimfeld/httptreemux/v5"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2"
 )
 
-func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers.Resolver) (*App, error) {
+func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config) (*App, error) {
 	if stsClient == nil {
 		return nil, errors.New("stsClient is nil")
 	}
@@ -29,14 +31,25 @@ func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers
 		return nil, errors.New("rootResolver is nil")
 	}
 	tracer := tp.Tracer("downstream")
-	return &App{stsClient: stsClient, tp: tp, tracer: tracer, resolver: rootResolver}, nil
+	return &App{
+		stsClient:     stsClient,
+		tp:            tp,
+		tracer:        tracer,
+		resolver:      rootResolver,
+		audience:      audience,
+		authenticator: authenticator,
+		authConfig:    authConfig,
+	}, nil
 }
 
 type App struct {
-	stsClient *sts.Client
-	tp        trace.TracerProvider
-	tracer    trace.Tracer
-	resolver  *resolvers.Resolver
+	stsClient     *sts.Client
+	tp            trace.TracerProvider
+	tracer        trace.Tracer
+	resolver      *resolvers.Resolver
+	audience      string
+	authenticator *authz.Middleware
+	authConfig    *oauth2.Config
 }
 
 func (*App) handleHealthCheck() http.Handler {
@@ -105,6 +118,24 @@ func (app *App) handleMe() http.Handler {
 	})
 }
 
+func (app *App) handleSignIn() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		url := app.authConfig.AuthCodeURL("0xdeadbeaf", oauth2.SetAuthURLParam("audience", app.audience))
+		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+	})
+}
+
+func (app *App) handleCallback() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, err := app.authConfig.Exchange(r.Context(), r.URL.Query().Get("code"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		http.Redirect(w, r, "/?token="+token.AccessToken, http.StatusTemporaryRedirect)
+	})
+}
+
 type Router interface {
 	Handler(method, path string, handler http.Handler)
 }
@@ -116,6 +147,8 @@ func (app *App) Handler() http.Handler {
 	router.Handler(http.MethodGet, "/me", app.handleMe())
 	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
-	router.Handler(http.MethodPost, "/graphql", app.handleGraphql())
+	router.Handler(http.MethodGet, "/signin", app.handleSignIn())
+	router.Handler(http.MethodGet, "/auth/callback", app.handleCallback())
+	router.Handler(http.MethodPost, "/graphql", app.authenticator.Authenticate(app.handleGraphql()))
 	return router
 }

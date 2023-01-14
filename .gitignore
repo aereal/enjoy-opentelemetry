@@ -3,3 +3,4 @@ cdktf.out
 *.tfstate
 *.tfstate.backup
 /db/data
+oauth2-client-config.json
