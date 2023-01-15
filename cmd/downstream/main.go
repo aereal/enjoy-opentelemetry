@@ -106,7 +106,7 @@ func run() error {
 	}
 	mw := authz.New(
 		authz.WithTracerProvider(downstreamTracerProvider),
-		authz.WithTokenExtractor(authz.ExtractFromHeader("x-token")),
+		authz.WithTokenExtractor(authz.ExtractFromAuthorizationHeader()),
 		authz.WithVerifyOptions(jws.WithKeyProvider(kp)),
 		authz.WithValidateOptions(jwt.WithAudience(os.Getenv("AUTH0_AUDIENCE"))),
 	)

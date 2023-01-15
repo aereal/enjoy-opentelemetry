@@ -3,6 +3,7 @@ package authz
 import (
 	"errors"
 	"net/http"
+	"strings"
 )
 
 var ErrTokenNotFound = errors.New("token not found")
@@ -28,6 +29,19 @@ func ExtractFromMultipleExtractors(extractors ...TokenExtractor) TokenExtractor 
 			}
 		}
 		return "", ErrTokenNotFound
+	})
+}
+
+const authTypeBearer = "Bearer"
+
+func ExtractFromAuthorizationHeader() TokenExtractor {
+	return tokenExtractorFunc(func(r *http.Request) (string, error) {
+		hv := strings.TrimSpace(r.Header.Get("authorization"))
+		v := strings.TrimSpace(strings.TrimPrefix(hv, authTypeBearer))
+		if v == "" {
+			return "", ErrTokenNotFound
+		}
+		return v, nil
 	})
 }
 
