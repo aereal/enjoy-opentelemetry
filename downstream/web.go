@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
@@ -19,6 +20,7 @@ import (
 	otelgqlgen "github.com/aereal/otelgqlgen"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dimfeld/httptreemux/v5"
+	"github.com/rs/cors"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
@@ -144,7 +146,21 @@ type Router interface {
 }
 
 func (app *App) Handler() http.Handler {
+	opts := cors.Options{}
+	opts.AllowCredentials = true
+	opts.AllowedHeaders = append(opts.AllowedHeaders, "authorization", "content-type")
+	opts.AllowOriginFunc = func(origin string) bool {
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return parsed.Hostname() == "localhost"
+	}
+	corsMW := cors.New(opts)
 	router := httptreemux.NewContextMux()
+	router.OptionsHandler = func(w http.ResponseWriter, r *http.Request, m map[string]string) {
+		corsMW.ServeHTTP(w, r, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	}
 	router.UseHandler(tracing.Middleware(app.tp))
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/me", app.handleMe())
@@ -152,6 +168,6 @@ func (app *App) Handler() http.Handler {
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
 	router.Handler(http.MethodGet, "/signin", app.handleSignIn())
 	router.Handler(http.MethodGet, "/auth/callback", app.handleCallback())
-	router.Handler(http.MethodPost, "/graphql", app.authenticator.Authenticate(app.handleGraphql()))
+	router.Handler(http.MethodPost, "/graphql", corsMW.Handler(app.authenticator.Authenticate(app.handleGraphql())))
 	return router
 }
