@@ -9,10 +9,12 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
+	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/aereal/enjoy-opentelemetry/authz"
 	"github.com/aereal/enjoy-opentelemetry/graph"
+	"github.com/aereal/enjoy-opentelemetry/graph/cache"
 	"github.com/aereal/enjoy-opentelemetry/graph/directives"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
@@ -68,6 +70,7 @@ func (a *App) handleGraphql() http.Handler {
 		Directives: directives.New(directives.WithTracerProvider(a.tp)),
 	}
 	srv := handler.New(graph.NewExecutableSchema(cfg))
+	srv.SetQueryCache(cache.NewTracedCache(lru.New(100), cache.WithTracerProvider(a.tp)))
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
 	srv.Use(otelgqlgen.New(otelgqlgen.WithTracerProvider(a.tp)))
