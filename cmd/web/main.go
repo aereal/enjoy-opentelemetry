@@ -22,13 +22,8 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aereal/enjoy-opentelemetry/upstream"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/lestrrat-go/jwx/v2/jws"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
@@ -75,17 +70,6 @@ func run() error {
 		defer cleanupDownstream(ctx)
 		defer cleanupUpstream(ctx)
 	}()
-	cfg, err := config.LoadDefaultConfig(
-		setupCtx,
-		config.WithEndpointDiscovery(aws.EndpointDiscoveryDisabled),
-		config.WithEC2IMDSClientEnableState(imds.ClientDisabled),
-		config.WithEC2RoleCredentialOptions(nil),
-	)
-	if err != nil {
-		return fmt.Errorf("config.LoadDefaultConfig: %w", err)
-	}
-	otelaws.AppendMiddlewares(&cfg.APIOptions, otelaws.WithTracerProvider(downstreamTracerProvider))
-	stsClient := sts.NewFromConfig(cfg)
 	dbx, err := db.New(downstreamTracerProvider, os.Getenv("DSN"))
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
@@ -124,7 +108,7 @@ func run() error {
 	if err := json.NewDecoder(f).Decode(&authConfig); err != nil {
 		return err
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, stsClient, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig)
+	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}

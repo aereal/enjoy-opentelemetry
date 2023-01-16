@@ -1,7 +1,6 @@
 package downstream
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,27 +16,20 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph/cache"
 	"github.com/aereal/enjoy-opentelemetry/graph/directives"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
-	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	otelgqlgen "github.com/aereal/otelgqlgen"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 )
 
-func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config) (*App, error) {
-	if stsClient == nil {
-		return nil, errors.New("stsClient is nil")
-	}
+func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config) (*App, error) {
 	if rootResolver == nil {
 		return nil, errors.New("rootResolver is nil")
 	}
 	tracer := tp.Tracer("downstream")
 	return &App{
-		stsClient:     stsClient,
 		tp:            tp,
 		tracer:        tracer,
 		resolver:      rootResolver,
@@ -48,7 +40,6 @@ func New(tp trace.TracerProvider, stsClient *sts.Client, rootResolver *resolvers
 }
 
 type App struct {
-	stsClient     *sts.Client
 	tp            trace.TracerProvider
 	tracer        trace.Tracer
 	resolver      *resolvers.Resolver
@@ -79,51 +70,6 @@ func (a *App) handleGraphql() http.Handler {
 
 func (*App) handleRoot() http.Handler {
 	return playground.Handler("GraphQL playground", "/graphql")
-}
-
-func (app *App) handleUser() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		data := struct{ ID string }{}
-		ctx, logger := log.FromContext(r.Context())
-		logger.Info("handle /users/:id", zap.String("xray_trace_id", r.Header.Get("X-Amzn-Trace-Id")))
-		params := httptreemux.ContextParams(ctx)
-		if id, ok := params["id"]; ok {
-			data.ID = id
-		}
-		_, span := app.tracer.Start(ctx, "createResponse")
-		defer span.End()
-		_ = json.NewEncoder(w).Encode(data)
-	})
-}
-
-func (app *App) handleMe() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("content-type", "application/json")
-		ctx, logger := log.FromContext(r.Context())
-		logger.Info("handle /me", zap.String("xray_trace_id", r.Header.Get("X-Amzn-Trace-Id")))
-		out, err := app.stsClient.GetCallerIdentity(ctx, nil)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
-			return
-		}
-		body := struct {
-			Account string `json:",omitempty"`
-			Arn     string `json:",omitempty"`
-			UserID  string `json:",omitempty"`
-		}{}
-		if out.Account != nil {
-			body.Account = *out.Account
-		}
-		if out.Arn != nil {
-			body.Arn = *out.Arn
-		}
-		if out.UserId != nil {
-			body.UserID = *out.UserId
-		}
-		_ = json.NewEncoder(w).Encode(body)
-	})
 }
 
 func (app *App) handleSignIn() http.Handler {
@@ -166,8 +112,6 @@ func (app *App) Handler() http.Handler {
 	}
 	router.UseHandler(tracing.Middleware(app.tp))
 	router.Handler(http.MethodGet, "/", app.handleRoot())
-	router.Handler(http.MethodGet, "/me", app.handleMe())
-	router.Handler(http.MethodGet, "/users/:id", app.handleUser())
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
 	router.Handler(http.MethodGet, "/signin", app.handleSignIn())
 	router.Handler(http.MethodGet, "/auth/callback", app.handleCallback())
