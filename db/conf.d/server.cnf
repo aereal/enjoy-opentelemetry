@@ -1,0 +1,4 @@
+[mysqld]
+secure-file-priv = ""
+local_infile = 1
+sql_mode = 'TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY,NO_ZERO_DATE,NO_ZERO_IN_DATE'

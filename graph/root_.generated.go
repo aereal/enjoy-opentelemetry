@@ -41,8 +41,9 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Liver struct {
-		Age  func(childComplexity int) int
-		Name func(childComplexity int) int
+		DebutedOn func(childComplexity int) int
+		Name      func(childComplexity int) int
+		RetiredOn func(childComplexity int) int
 	}
 
 	LiverConnection struct {
@@ -87,12 +88,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
-	case "Liver.age":
-		if e.complexity.Liver.Age == nil {
+	case "Liver.debuted_on":
+		if e.complexity.Liver.DebutedOn == nil {
 			break
 		}
 
-		return e.complexity.Liver.Age(childComplexity), true
+		return e.complexity.Liver.DebutedOn(childComplexity), true
 
 	case "Liver.name":
 		if e.complexity.Liver.Name == nil {
@@ -100,6 +101,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Liver.Name(childComplexity), true
+
+	case "Liver.retired_on":
+		if e.complexity.Liver.RetiredOn == nil {
+			break
+		}
+
+		return e.complexity.Liver.RetiredOn(childComplexity), true
 
 	case "LiverConnection.edges":
 		if e.complexity.LiverConnection.Edges == nil {
@@ -271,7 +279,8 @@ enum Scope {
 
 type Liver {
   name: String!
-  age: Int
+  debuted_on: String!
+  retired_on: String
 }
 
 type PageInfo {

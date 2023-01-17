@@ -37,9 +37,10 @@ func NewEdges[T Edge](edges []T, first int) []T {
 }
 
 type Liver struct {
-	ID   uint64 `db:"liver_id"`
-	Name string `json:"name" db:"name"`
-	Age  *int   `json:"age" db:"age"`
+	ID        uint64  `db:"liver_id"`
+	Name      string  `json:"name" db:"name"`
+	DebutedOn string  `json:"debuted_on" db:"debuted_on"`
+	RetiredOn *string `json:"retired_on" db:"retired_on"`
 }
 
 type LiverEdge struct {
