@@ -272,6 +272,8 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 var sources = []*ast.Source{
 	{Name: "../schemata/main.gql", Input: `directive @authenticate(scopes: [Scope!]) on FIELD_DEFINITION
 
+scalar Time
+
 enum Scope {
   READ
   WRITE
@@ -279,8 +281,8 @@ enum Scope {
 
 type Liver {
   name: String!
-  debuted_on: String!
-  retired_on: String
+  debuted_on: Time!
+  retired_on: Time
 }
 
 type PageInfo {
