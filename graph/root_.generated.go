@@ -41,9 +41,11 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Liver struct {
-		DebutedOn func(childComplexity int) int
-		Name      func(childComplexity int) int
-		RetiredOn func(childComplexity int) int
+		DebutedOn      func(childComplexity int) int
+		EnrollmentDays func(childComplexity int) int
+		Name           func(childComplexity int) int
+		RetiredOn      func(childComplexity int) int
+		Status         func(childComplexity int) int
 	}
 
 	LiverConnection struct {
@@ -95,6 +97,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Liver.DebutedOn(childComplexity), true
 
+	case "Liver.enrollmentDays":
+		if e.complexity.Liver.EnrollmentDays == nil {
+			break
+		}
+
+		return e.complexity.Liver.EnrollmentDays(childComplexity), true
+
 	case "Liver.name":
 		if e.complexity.Liver.Name == nil {
 			break
@@ -108,6 +117,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Liver.RetiredOn(childComplexity), true
+
+	case "Liver.status":
+		if e.complexity.Liver.Status == nil {
+			break
+		}
+
+		return e.complexity.Liver.Status(childComplexity), true
 
 	case "LiverConnection.edges":
 		if e.complexity.LiverConnection.Edges == nil {
@@ -279,10 +295,18 @@ enum Scope {
   WRITE
 }
 
+enum LiverStatus {
+  ANNOUNCED
+  DEBUTED
+  RETIRED
+}
+
 type Liver {
   name: String!
   debuted_on: Time!
   retired_on: Time
+  status: LiverStatus!
+  enrollmentDays: Int!
 }
 
 type PageInfo {

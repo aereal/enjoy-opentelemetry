@@ -25,3 +25,6 @@ models:
   Scope:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.Scope
+  LiverStatus:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverStatus

@@ -7,10 +7,18 @@ enum Scope {
   WRITE
 }
 
+enum LiverStatus {
+  ANNOUNCED
+  DEBUTED
+  RETIRED
+}
+
 type Liver {
   name: String!
   debuted_on: Time!
   retired_on: Time
+  status: LiverStatus!
+  enrollmentDays: Int!
 }
 
 type PageInfo {

@@ -264,6 +264,94 @@ func (ec *executionContext) fieldContext_Liver_retired_on(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Liver_status(ctx context.Context, field graphql.CollectedField, obj *models.Liver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Liver_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(models.LiverStatus)
+	fc.Result = res
+	return ec.marshalNLiverStatus2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Liver_status(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Liver",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type LiverStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Liver_enrollmentDays(ctx context.Context, field graphql.CollectedField, obj *models.Liver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Liver_enrollmentDays(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EnrollmentDays(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int64)
+	fc.Result = res
+	return ec.marshalNInt2int64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Liver_enrollmentDays(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Liver",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LiverConnection_edges(ctx context.Context, field graphql.CollectedField, obj *models.LiverConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LiverConnection_edges(ctx, field)
 	if err != nil {
@@ -413,6 +501,10 @@ func (ec *executionContext) fieldContext_LiverEdge_node(ctx context.Context, fie
 				return ec.fieldContext_Liver_debuted_on(ctx, field)
 			case "retired_on":
 				return ec.fieldContext_Liver_retired_on(ctx, field)
+			case "status":
+				return ec.fieldContext_Liver_status(ctx, field)
+			case "enrollmentDays":
+				return ec.fieldContext_Liver_enrollmentDays(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Liver", field.Name)
 		},
@@ -779,6 +871,10 @@ func (ec *executionContext) fieldContext_Query_liver(ctx context.Context, field 
 				return ec.fieldContext_Liver_debuted_on(ctx, field)
 			case "retired_on":
 				return ec.fieldContext_Liver_retired_on(ctx, field)
+			case "status":
+				return ec.fieldContext_Liver_status(ctx, field)
+			case "enrollmentDays":
+				return ec.fieldContext_Liver_enrollmentDays(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Liver", field.Name)
 		},
@@ -1087,6 +1183,20 @@ func (ec *executionContext) _Liver(ctx context.Context, sel ast.SelectionSet, ob
 
 			out.Values[i] = ec._Liver_retired_on(ctx, field, obj)
 
+		case "status":
+
+			out.Values[i] = ec._Liver_status(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "enrollmentDays":
+
+			out.Values[i] = ec._Liver_enrollmentDays(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1442,6 +1552,16 @@ func (ec *executionContext) unmarshalNLiverOrderField2githubᚗcomᚋaerealᚋen
 
 func (ec *executionContext) marshalNLiverOrderField2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverOrderField(ctx context.Context, sel ast.SelectionSet, v models.LiverOrderField) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNLiverStatus2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverStatus(ctx context.Context, v interface{}) (models.LiverStatus, error) {
+	var res models.LiverStatus
+	err := res.UnmarshalGQLContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLiverStatus2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverStatus(ctx context.Context, sel ast.SelectionSet, v models.LiverStatus) graphql.Marshaler {
+	return graphql.WrapContextMarshaler(ctx, v)
 }
 
 func (ec *executionContext) unmarshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐOrderDirection(ctx context.Context, v interface{}) (models.OrderDirection, error) {
