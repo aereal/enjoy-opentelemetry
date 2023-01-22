@@ -25,7 +25,7 @@ require (
 	golang.org/x/sync v0.1.0
 )
 
-replace github.com/aereal/otelgqlgen => ../otel-gqlgen
+replace github.com/aereal/otelgqlgen => ../otelgqlgen
 
 require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
