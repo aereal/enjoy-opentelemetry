@@ -2,27 +2,32 @@ package resolvers
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
+	"github.com/doug-martin/goqu/v9"
+	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
+	"github.com/doug-martin/goqu/v9/exp"
 )
 
-func toOrderBy(o *models.LiverOrder) string {
-	var (
-		column string
-		dir    string
-	)
-	switch o.Field {
+var (
+	dialect     = goqu.Dialect("mysql")
+	liversTable = dialect.From("livers")
+)
+
+func toOrderBy(o *models.LiverOrder) exp.OrderedExpression {
+	var column exp.IdentifierExpression
+	switch f := o.Field; f {
 	case models.LiverOrderFieldDatabaseID:
-		column = "liver_id"
+		column = goqu.C("liver_id")
 	default:
-		panic(fmt.Errorf("[BUG] unknown field: %s", o.Field))
+		panic(fmt.Errorf("[BUG] unknown field: %s", f))
 	}
-	switch o.Direction {
-	case models.OrderDirectionAsc, models.OrderDirectionDesc:
-		dir = strings.ToLower(o.Direction.String())
+	switch d := o.Direction; d {
+	case models.OrderDirectionAsc:
+		return column.Asc()
+	case models.OrderDirectionDesc:
+		return column.Desc()
 	default:
-		panic(fmt.Errorf("[BUG] unknown direction: %s", o.Direction))
+		panic(fmt.Errorf("[BUG] unknown direction: %s", d))
 	}
-	return fmt.Sprintf("order by %s %s", column, dir)
 }

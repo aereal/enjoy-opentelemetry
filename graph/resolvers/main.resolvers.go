@@ -12,6 +12,7 @@ import (
 
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
+	"github.com/doug-martin/goqu/v9"
 	"github.com/go-sql-driver/mysql"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -24,11 +25,15 @@ func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*m
 
 // RegisterLiver is the resolver for the registerLiver field.
 func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool, error) {
-	values := struct {
-		Name string `db:"name"`
-	}{Name: name}
-	_, err := r.dbx.NamedExecContext(ctx, "insert into livers (name) values (:name)", values)
+	query, args, err := liversTable.
+		Insert().
+		Cols("name").
+		Vals(goqu.Vals{name}).
+		ToSQL()
 	if err != nil {
+		return false, err
+	}
+	if _, err := r.dbx.ExecContext(ctx, query, args...); err != nil {
 		var merr *mysql.MySQLError
 		if errors.As(err, &merr) {
 			span := trace.SpanFromContext(ctx)
@@ -41,8 +46,17 @@ func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool
 
 // Liver is the resolver for the liver field.
 func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, error) {
+	query, args, err := liversTable.
+		Where(
+			goqu.C("name").Eq(name),
+		).
+		Limit(1).
+		ToSQL()
+	if err != nil {
+		return nil, err
+	}
 	var liver models.Liver
-	if err := r.dbx.GetContext(ctx, &liver, "select * from livers where name = ? limit 1", name); err != nil {
+	if err := r.dbx.GetContext(ctx, &liver, query, args...); err != nil {
 		return nil, fmt.Errorf("GetContext: %w", err)
 	}
 	return &liver, nil
@@ -70,13 +84,17 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, o
 			return nil, err
 		}
 	}
-	limit := firstInt + 1
+	limit := uint(firstInt + 1)
+	qb := liversTable.
+		Limit(limit).
+		Order(toOrderBy(orderBy))
 	edges := make([]*models.LiverEdge, 0, limit)
-	args := make([]any, 0, 1)
-	query := fmt.Sprintf(`select * from livers %s limit %d`, toOrderBy(orderBy), limit)
 	if !cursor.IsEmpty() {
-		query = fmt.Sprintf(`select * from livers where liver_id > ? %s limit %d`, toOrderBy(orderBy), limit)
-		args = []any{cursor.LiverID}
+		qb = qb.Where(goqu.C("liver_id").Gt(cursor.LiverID))
+	}
+	query, args, err := qb.ToSQL()
+	if err != nil {
+		return nil, err
 	}
 	if err := r.dbx.SelectContext(ctx, &edges, query, args...); err != nil {
 		return nil, fmt.Errorf("SelectContext: %w", err)
