@@ -6,12 +6,15 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/dimfeld/httptreemux/v5"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -154,4 +157,47 @@ func (rt *ResourceOverriderRoundTripper) RoundTrip(r *http.Request) (*http.Respo
 
 	span.SetAttributes(attrResourceName.String(r.URL.String()))
 	return rt.Base.RoundTrip(r)
+}
+
+var (
+	sqsEventAttributes = []attribute.KeyValue{
+		semconv.MessagingSystemKey.String("AmazonSQS"),
+		semconv.MessagingOperationProcess,
+		semconv.FaaSTriggerPubsub,
+		attribute.String("messaging.source.kind", "queue"),
+	}
+	messagingSourceNameKey = attribute.Key("messaging.source.name")
+	messagingMessageIDKey  = attribute.Key("messaging.message.id")
+)
+
+const (
+	attrAWSTraceHeader = "AWSTraceHeader"
+	headerXrayID       = "X-Amzn-Trace-Id"
+)
+
+func StartTraceFromSQSEvent(ctx context.Context, tracer trace.Tracer, queueName string) (context.Context, trace.Span) {
+	attrs := sqsEventAttributes[:]
+	attrs = append(attrs, messagingSourceNameKey.String(queueName))
+	opts := []trace.SpanStartOption{
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(attrs...),
+	}
+	return tracer.Start(ctx, fmt.Sprintf("%s process", queueName), opts...)
+}
+
+func StartTraceFromSQSMessage(ctx context.Context, tracer trace.Tracer, queueName string, msg events.SQSMessage) (context.Context, trace.Span) {
+	attrs := sqsEventAttributes[:]
+	attrs = append(attrs, messagingSourceNameKey.String(queueName), messagingMessageIDKey.String(msg.MessageId))
+	opts := []trace.SpanStartOption{
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithAttributes(attrs...),
+	}
+	if traceID, ok := msg.Attributes[attrAWSTraceHeader]; ok {
+		carrier := propagation.MapCarrier{}
+		carrier.Set(headerXrayID, traceID)
+		remoteCtx := xray.Propagator{}.Extract(ctx, carrier)
+		link := trace.LinkFromContext(remoteCtx)
+		opts = append(opts, trace.WithLinks(link))
+	}
+	return tracer.Start(ctx, fmt.Sprintf("%s process", queueName), opts...)
 }
