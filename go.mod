@@ -6,9 +6,11 @@ require (
 	github.com/99designs/gqlgen v0.17.22
 	github.com/XSAM/otelsql v0.17.1
 	github.com/aereal/otelgqlgen v0.1.0
+	github.com/aws/aws-lambda-go v1.37.0
 	github.com/dimfeld/httptreemux/v5 v5.5.0
 	github.com/doug-martin/goqu/v9 v9.18.0
 	github.com/go-sql-driver/mysql v1.7.0
+	github.com/google/go-cmp v0.5.9
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lestrrat-go/jwx/v2 v2.0.8
 	github.com/rs/cors v1.8.3
