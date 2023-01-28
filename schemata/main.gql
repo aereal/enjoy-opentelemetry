@@ -13,12 +13,27 @@ enum LiverStatus {
   RETIRED
 }
 
+type Group {
+  name: String!
+}
+
+type LiverGroupEdge {
+  node: Group!
+  cursor: String!
+}
+
+type LiverGroupConnetion {
+  edges: [LiverGroupEdge!]!
+  pageInfo: PageInfo!
+}
+
 type Liver {
   name: String!
   debuted_on: Time!
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
+  groups(first: Int): LiverGroupConnetion!
 }
 
 type PageInfo {

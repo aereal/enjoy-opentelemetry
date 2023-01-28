@@ -17,6 +17,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/adapters/db"
 	"github.com/aereal/enjoy-opentelemetry/authz"
 	"github.com/aereal/enjoy-opentelemetry/authz/oidcconfig"
+	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/aereal/enjoy-opentelemetry/downstream"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
@@ -74,7 +75,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}
-	rootResolver, err := resolvers.New(dbx)
+	liverGroupRepository, err := domain.NewLiverGroupRepository(domain.WithDB(dbx), domain.WithTracerProvider(downstreamTracerProvider))
+	if err != nil {
+		return err
+	}
+	rootResolver, err := resolvers.New(liverGroupRepository, dbx)
 	if err != nil {
 		return fmt.Errorf("resolvers.New: %w", err)
 	}

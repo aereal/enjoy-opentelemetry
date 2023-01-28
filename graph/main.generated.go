@@ -13,12 +13,16 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
+	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // region    ************************** generated!.gotpl **************************
 
+type LiverResolver interface {
+	Groups(ctx context.Context, obj *models.Liver, first *int) (*models.LiverGroupConnetion, error)
+}
 type LiverEdgeResolver interface {
 	Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error)
 }
@@ -46,6 +50,21 @@ func (ec *executionContext) dir_authenticate_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["scopes"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Liver_groups_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg0
 	return args, nil
 }
 
@@ -134,6 +153,50 @@ func (ec *executionContext) field_Query_livers_args(ctx context.Context, rawArgs
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _Group_name(ctx context.Context, field graphql.CollectedField, obj *domain.Group) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Group_name(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Name, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Group_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Group",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Liver_name(ctx context.Context, field graphql.CollectedField, obj *models.Liver) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Liver_name(ctx, field)
@@ -352,6 +415,67 @@ func (ec *executionContext) fieldContext_Liver_enrollmentDays(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Liver_groups(ctx context.Context, field graphql.CollectedField, obj *models.Liver) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Liver_groups(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Liver().Groups(rctx, obj, fc.Args["first"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.LiverGroupConnetion)
+	fc.Result = res
+	return ec.marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Liver_groups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Liver",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_LiverGroupConnetion_edges(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_LiverGroupConnetion_pageInfo(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LiverGroupConnetion", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Liver_groups_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LiverConnection_edges(ctx context.Context, field graphql.CollectedField, obj *models.LiverConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LiverConnection_edges(ctx, field)
 	if err != nil {
@@ -505,6 +629,8 @@ func (ec *executionContext) fieldContext_LiverEdge_node(ctx context.Context, fie
 				return ec.fieldContext_Liver_status(ctx, field)
 			case "enrollmentDays":
 				return ec.fieldContext_Liver_enrollmentDays(ctx, field)
+			case "groups":
+				return ec.fieldContext_Liver_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Liver", field.Name)
 		},
@@ -546,6 +672,202 @@ func (ec *executionContext) _LiverEdge_cursor(ctx context.Context, field graphql
 func (ec *executionContext) fieldContext_LiverEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "LiverEdge",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LiverGroupConnetion_edges(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnetion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LiverGroupConnetion_edges(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Edges, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*models.LiverGroupEdge)
+	fc.Result = res
+	return ec.marshalNLiverGroupEdge2ᚕᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupEdgeᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LiverGroupConnetion_edges(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LiverGroupConnetion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "node":
+				return ec.fieldContext_LiverGroupEdge_node(ctx, field)
+			case "cursor":
+				return ec.fieldContext_LiverGroupEdge_cursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LiverGroupEdge", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LiverGroupConnetion_pageInfo(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnetion) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LiverGroupConnetion_pageInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageInfo, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*models.PageInfo)
+	fc.Result = res
+	return ec.marshalNPageInfo2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐPageInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LiverGroupConnetion_pageInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LiverGroupConnetion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "hasPreviousPage":
+				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
+			case "hasNextPage":
+				return ec.fieldContext_PageInfo_hasNextPage(ctx, field)
+			case "startCursor":
+				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "endCursor":
+				return ec.fieldContext_PageInfo_endCursor(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LiverGroupEdge_node(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LiverGroupEdge_node(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Node, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*domain.Group)
+	fc.Result = res
+	return ec.marshalNGroup2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐGroup(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LiverGroupEdge_node(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LiverGroupEdge",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_Group_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Group", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LiverGroupEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupEdge) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_LiverGroupEdge_cursor(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cursor(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_LiverGroupEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LiverGroupEdge",
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: false,
@@ -598,7 +920,6 @@ func (ec *executionContext) _Mutation_registerLiver(ctx context.Context, field g
 	})
 	if err != nil {
 		ec.Error(ctx, err)
-		return graphql.Null
 	}
 	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
@@ -847,7 +1168,6 @@ func (ec *executionContext) _Query_liver(ctx context.Context, field graphql.Coll
 	})
 	if err != nil {
 		ec.Error(ctx, err)
-		return graphql.Null
 	}
 	if resTmp == nil {
 		return graphql.Null
@@ -875,6 +1195,8 @@ func (ec *executionContext) fieldContext_Query_liver(ctx context.Context, field 
 				return ec.fieldContext_Liver_status(ctx, field)
 			case "enrollmentDays":
 				return ec.fieldContext_Liver_enrollmentDays(ctx, field)
+			case "groups":
+				return ec.fieldContext_Liver_groups(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Liver", field.Name)
 		},
@@ -935,7 +1257,6 @@ func (ec *executionContext) _Query_livers(ctx context.Context, field graphql.Col
 	})
 	if err != nil {
 		ec.Error(ctx, err)
-		return graphql.Null
 	}
 	if resTmp == nil {
 		if !graphql.HasFieldError(ctx, fc) {
@@ -996,7 +1317,6 @@ func (ec *executionContext) _Query___type(ctx context.Context, field graphql.Col
 	})
 	if err != nil {
 		ec.Error(ctx, err)
-		return graphql.Null
 	}
 	if resTmp == nil {
 		return graphql.Null
@@ -1070,7 +1390,6 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	})
 	if err != nil {
 		ec.Error(ctx, err)
-		return graphql.Null
 	}
 	if resTmp == nil {
 		return graphql.Null
@@ -1155,6 +1474,34 @@ func (ec *executionContext) unmarshalInputLiverOrder(ctx context.Context, obj in
 
 // region    **************************** object.gotpl ****************************
 
+var groupImplementors = []string{"Group"}
+
+func (ec *executionContext) _Group(ctx context.Context, sel ast.SelectionSet, obj *domain.Group) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, groupImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Group")
+		case "name":
+
+			out.Values[i] = ec._Group_name(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var liverImplementors = []string{"Liver"}
 
 func (ec *executionContext) _Liver(ctx context.Context, sel ast.SelectionSet, obj *models.Liver) graphql.Marshaler {
@@ -1170,14 +1517,14 @@ func (ec *executionContext) _Liver(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Liver_name(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "debuted_on":
 
 			out.Values[i] = ec._Liver_debuted_on(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "retired_on":
 
@@ -1188,15 +1535,35 @@ func (ec *executionContext) _Liver(ctx context.Context, sel ast.SelectionSet, ob
 			out.Values[i] = ec._Liver_status(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "enrollmentDays":
 
 			out.Values[i] = ec._Liver_enrollmentDays(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
+		case "groups":
+			field := field
+
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Liver_groups(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -1291,6 +1658,76 @@ func (ec *executionContext) _LiverEdge(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var liverGroupConnetionImplementors = []string{"LiverGroupConnetion"}
+
+func (ec *executionContext) _LiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, obj *models.LiverGroupConnetion) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, liverGroupConnetionImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LiverGroupConnetion")
+		case "edges":
+
+			out.Values[i] = ec._LiverGroupConnetion_edges(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "pageInfo":
+
+			out.Values[i] = ec._LiverGroupConnetion_pageInfo(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var liverGroupEdgeImplementors = []string{"LiverGroupEdge"}
+
+func (ec *executionContext) _LiverGroupEdge(ctx context.Context, sel ast.SelectionSet, obj *models.LiverGroupEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, liverGroupEdgeImplementors)
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LiverGroupEdge")
+		case "node":
+
+			out.Values[i] = ec._LiverGroupEdge_node(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "cursor":
+
+			out.Values[i] = ec._LiverGroupEdge_cursor(ctx, field, obj)
+
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -1300,7 +1737,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	})
 
 	out := graphql.NewFieldSet(fields)
-	var invalids uint32
 	for i, field := range fields {
 		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
 			Object: field.Name,
@@ -1316,17 +1752,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 				return ec._Mutation_registerLiver(ctx, field)
 			})
 
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
 	}
 	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
 	return out
 }
 
@@ -1382,7 +1812,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 	})
 
 	out := graphql.NewFieldSet(fields)
-	var invalids uint32
 	for i, field := range fields {
 		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
 			Object: field.Name,
@@ -1422,9 +1851,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_livers(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			}
 
@@ -1452,15 +1878,22 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		}
 	}
 	out.Dispatch()
-	if invalids > 0 {
-		return graphql.Null
-	}
 	return out
 }
 
 // endregion **************************** object.gotpl ****************************
 
 // region    ***************************** type.gotpl *****************************
+
+func (ec *executionContext) marshalNGroup2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐGroup(ctx context.Context, sel ast.SelectionSet, v *domain.Group) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Group(ctx, sel, v)
+}
 
 func (ec *executionContext) marshalNLiver2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiver(ctx context.Context, sel ast.SelectionSet, v models.Liver) graphql.Marshaler {
 	return ec._Liver(ctx, sel, &v)
@@ -1542,6 +1975,74 @@ func (ec *executionContext) marshalNLiverEdge2ᚖgithubᚗcomᚋaerealᚋenjoy�
 		return graphql.Null
 	}
 	return ec._LiverEdge(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLiverGroupConnetion2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, v models.LiverGroupConnetion) graphql.Marshaler {
+	return ec._LiverGroupConnetion(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, v *models.LiverGroupConnetion) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LiverGroupConnetion(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNLiverGroupEdge2ᚕᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupEdgeᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.LiverGroupEdge) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNLiverGroupEdge2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNLiverGroupEdge2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupEdge(ctx context.Context, sel ast.SelectionSet, v *models.LiverGroupEdge) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LiverGroupEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNLiverOrderField2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverOrderField(ctx context.Context, v interface{}) (models.LiverOrderField, error) {

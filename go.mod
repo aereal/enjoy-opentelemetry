@@ -3,7 +3,7 @@ module github.com/aereal/enjoy-opentelemetry
 go 1.19
 
 require (
-	github.com/99designs/gqlgen v0.17.22
+	github.com/99designs/gqlgen v0.17.24
 	github.com/XSAM/otelsql v0.17.1
 	github.com/aereal/otelgqlgen v0.1.0
 	github.com/dimfeld/httptreemux/v5 v5.5.0

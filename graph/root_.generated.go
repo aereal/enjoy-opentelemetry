@@ -30,6 +30,7 @@ type Config struct {
 }
 
 type ResolverRoot interface {
+	Liver() LiverResolver
 	LiverEdge() LiverEdgeResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -40,9 +41,14 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	Group struct {
+		Name func(childComplexity int) int
+	}
+
 	Liver struct {
 		DebutedOn      func(childComplexity int) int
 		EnrollmentDays func(childComplexity int) int
+		Groups         func(childComplexity int, first *int) int
 		Name           func(childComplexity int) int
 		RetiredOn      func(childComplexity int) int
 		Status         func(childComplexity int) int
@@ -54,6 +60,16 @@ type ComplexityRoot struct {
 	}
 
 	LiverEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
+	LiverGroupConnetion struct {
+		Edges    func(childComplexity int) int
+		PageInfo func(childComplexity int) int
+	}
+
+	LiverGroupEdge struct {
 		Cursor func(childComplexity int) int
 		Node   func(childComplexity int) int
 	}
@@ -90,6 +106,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 	_ = ec
 	switch typeName + "." + field {
 
+	case "Group.name":
+		if e.complexity.Group.Name == nil {
+			break
+		}
+
+		return e.complexity.Group.Name(childComplexity), true
+
 	case "Liver.debuted_on":
 		if e.complexity.Liver.DebutedOn == nil {
 			break
@@ -103,6 +126,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Liver.EnrollmentDays(childComplexity), true
+
+	case "Liver.groups":
+		if e.complexity.Liver.Groups == nil {
+			break
+		}
+
+		args, err := ec.field_Liver_groups_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Liver.Groups(childComplexity, args["first"].(*int)), true
 
 	case "Liver.name":
 		if e.complexity.Liver.Name == nil {
@@ -152,6 +187,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.LiverEdge.Node(childComplexity), true
+
+	case "LiverGroupConnetion.edges":
+		if e.complexity.LiverGroupConnetion.Edges == nil {
+			break
+		}
+
+		return e.complexity.LiverGroupConnetion.Edges(childComplexity), true
+
+	case "LiverGroupConnetion.pageInfo":
+		if e.complexity.LiverGroupConnetion.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.LiverGroupConnetion.PageInfo(childComplexity), true
+
+	case "LiverGroupEdge.cursor":
+		if e.complexity.LiverGroupEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.LiverGroupEdge.Cursor(childComplexity), true
+
+	case "LiverGroupEdge.node":
+		if e.complexity.LiverGroupEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.LiverGroupEdge.Node(childComplexity), true
 
 	case "Mutation.registerLiver":
 		if e.complexity.Mutation.RegisterLiver == nil {
@@ -301,12 +364,27 @@ enum LiverStatus {
   RETIRED
 }
 
+type Group {
+  name: String!
+}
+
+type LiverGroupEdge {
+  node: Group!
+  cursor: String!
+}
+
+type LiverGroupConnetion {
+  edges: [LiverGroupEdge!]!
+  pageInfo: PageInfo!
+}
+
 type Liver {
   name: String!
   debuted_on: Time!
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
+  groups(first: Int): LiverGroupConnetion!
 }
 
 type PageInfo {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/aereal/enjoy-opentelemetry/domain"
 )
 
 type Edge interface {
@@ -189,4 +190,38 @@ func (s *LiverStatus) UnmarshalGQLContext(_ context.Context, v any) error {
 		return errors.New("LiverStatus must be a string")
 	}
 	return s.UnmarshalText([]byte(sv))
+}
+
+type GroupCursor struct {
+	GroupID uint64
+}
+
+func (c *GroupCursor) IsEmpty() bool {
+	return c == nil || c == &GroupCursor{}
+}
+
+func (c *GroupCursor) Encode() string {
+	b, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	return cursorEncoding.EncodeToString(b)
+}
+
+type Group struct {
+	Name string `json:"name" db:"name"`
+	ID   uint64 `db:"liver_group_id"`
+}
+
+type LiverGroupEdge struct {
+	Node *domain.Group `json:"node"`
+}
+
+var _ Edge = (*LiverGroupEdge)(nil)
+
+func (g *LiverGroupEdge) Cursor() string {
+	if g == nil || g.Node == nil {
+		return ""
+	}
+	return (&GroupCursor{GroupID: g.Node.ID}).Encode()
 }

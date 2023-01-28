@@ -28,3 +28,9 @@ models:
   LiverStatus:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.LiverStatus
+  Group:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/domain.Group
+  LiverGroupEdge:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverGroupEdge

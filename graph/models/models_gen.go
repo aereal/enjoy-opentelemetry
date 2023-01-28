@@ -13,6 +13,11 @@ type LiverConnection struct {
 	PageInfo *PageInfo    `json:"pageInfo"`
 }
 
+type LiverGroupConnetion struct {
+	Edges    []*LiverGroupEdge `json:"edges"`
+	PageInfo *PageInfo         `json:"pageInfo"`
+}
+
 type LiverOrder struct {
 	Field     LiverOrderField `json:"field"`
 	Direction OrderDirection  `json:"direction"`
