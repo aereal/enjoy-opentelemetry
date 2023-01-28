@@ -70,7 +70,7 @@ func run() error {
 		defer cleanupDownstream(ctx)
 		defer cleanupUpstream(ctx)
 	}()
-	dbx, err := db.New(downstreamTracerProvider, os.Getenv("DSN"))
+	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downstreamTracerProvider))
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}

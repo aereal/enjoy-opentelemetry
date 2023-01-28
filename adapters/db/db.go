@@ -7,6 +7,7 @@ import (
 	"github.com/XSAM/otelsql"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -20,14 +21,34 @@ func init() {
 	}
 }
 
-func New(tp trace.TracerProvider, dsn string) (*sqlx.DB, error) {
-	cfg, err := mysql.ParseDSN(dsn)
+type config struct {
+	tp trace.TracerProvider
+}
+
+type Option func(*config)
+
+func WithTracerProvider(tp trace.TracerProvider) Option {
+	return func(c *config) {
+		c.tp = tp
+	}
+}
+
+func New(dsn string, opts ...Option) (*sqlx.DB, error) {
+	var cfg config
+	for _, o := range opts {
+		o(&cfg)
+	}
+	if cfg.tp == nil {
+		cfg.tp = otel.GetTracerProvider()
+	}
+
+	dbCfg, err := mysql.ParseDSN(dsn)
 	if err != nil {
 		return nil, err
 	}
-	cfg.ParseTime = true
-	cfg.Loc = defaultLoc
-	db, err := otelsql.Open("mysql", cfg.FormatDSN(), otelsql.WithTracerProvider(tp), otelsql.WithSpanOptions(otelsql.SpanOptions{DisableErrSkip: true}))
+	dbCfg.ParseTime = true
+	dbCfg.Loc = defaultLoc
+	db, err := otelsql.Open("mysql", dbCfg.FormatDSN(), otelsql.WithTracerProvider(cfg.tp), otelsql.WithSpanOptions(otelsql.SpanOptions{DisableErrSkip: true}))
 	if err != nil {
 		return nil, fmt.Errorf("otelsql.Open: %w", err)
 	}

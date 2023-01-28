@@ -67,7 +67,7 @@ func run() error {
 		zap.String("service", serviceName),
 		zap.String("port", downstreamPort),
 		zap.Bool("debug", debug))
-	dbx, err := db.New(downstreamTracerProvider, os.Getenv("DSN"))
+	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downstreamTracerProvider))
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}
