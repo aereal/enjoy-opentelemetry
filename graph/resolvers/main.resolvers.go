@@ -13,7 +13,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
-	"github.com/doug-martin/goqu/v9"
+	goqu "github.com/doug-martin/goqu/v9"
 	"github.com/go-sql-driver/mysql"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -39,14 +39,19 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 		}
 	}
 	return &models.LiverGroupConnetion{
-		Edges:    edges,
-		PageInfo: models.NewPageInfo(edges, f),
+		Edges: edges,
+		First: f,
 	}, nil
 }
 
 // Node is the resolver for the node field.
 func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error) {
 	return obj.Liver, nil
+}
+
+// PageInfo is the resolver for the pageInfo field.
+func (r *liverGroupConnetionResolver) PageInfo(ctx context.Context, obj *models.LiverGroupConnetion) (*models.PageInfo, error) {
+	return models.NewPageInfo(obj.Edges, obj.First), nil
 }
 
 // RegisterLiver is the resolver for the registerLiver field.
@@ -138,6 +143,11 @@ func (r *Resolver) Liver() graph.LiverResolver { return &liverResolver{r} }
 // LiverEdge returns graph.LiverEdgeResolver implementation.
 func (r *Resolver) LiverEdge() graph.LiverEdgeResolver { return &liverEdgeResolver{r} }
 
+// LiverGroupConnetion returns graph.LiverGroupConnetionResolver implementation.
+func (r *Resolver) LiverGroupConnetion() graph.LiverGroupConnetionResolver {
+	return &liverGroupConnetionResolver{r}
+}
+
 // Mutation returns graph.MutationResolver implementation.
 func (r *Resolver) Mutation() graph.MutationResolver { return &mutationResolver{r} }
 
@@ -146,5 +156,6 @@ func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
 type liverResolver struct{ *Resolver }
 type liverEdgeResolver struct{ *Resolver }
+type liverGroupConnetionResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

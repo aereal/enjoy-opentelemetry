@@ -225,3 +225,8 @@ func (g *LiverGroupEdge) Cursor() string {
 	}
 	return (&GroupCursor{GroupID: g.Node.ID}).Encode()
 }
+
+type LiverGroupConnetion struct {
+	Edges []*LiverGroupEdge `json:"edges"`
+	First int
+}
