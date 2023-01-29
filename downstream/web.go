@@ -15,6 +15,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/cache"
 	"github.com/aereal/enjoy-opentelemetry/graph/directives"
+	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	otelgqlgen "github.com/aereal/otelgqlgen"
@@ -24,28 +25,30 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config) (*App, error) {
+func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config, loaderAggregate *loaders.Aggregate) (*App, error) {
 	if rootResolver == nil {
 		return nil, errors.New("rootResolver is nil")
 	}
 	tracer := tp.Tracer("downstream")
 	return &App{
-		tp:            tp,
-		tracer:        tracer,
-		resolver:      rootResolver,
-		audience:      audience,
-		authenticator: authenticator,
-		authConfig:    authConfig,
+		tp:              tp,
+		tracer:          tracer,
+		resolver:        rootResolver,
+		audience:        audience,
+		authenticator:   authenticator,
+		authConfig:      authConfig,
+		loaderAggregate: loaderAggregate,
 	}, nil
 }
 
 type App struct {
-	tp            trace.TracerProvider
-	tracer        trace.Tracer
-	resolver      *resolvers.Resolver
-	audience      string
-	authenticator *authz.Middleware
-	authConfig    *oauth2.Config
+	tp              trace.TracerProvider
+	tracer          trace.Tracer
+	resolver        *resolvers.Resolver
+	audience        string
+	authenticator   *authz.Middleware
+	authConfig      *oauth2.Config
+	loaderAggregate *loaders.Aggregate
 }
 
 func (*App) handleHealthCheck() http.Handler {
@@ -65,6 +68,7 @@ func (a *App) handleGraphql() http.Handler {
 	srv.AddTransport(transport.POST{})
 	srv.Use(extension.Introspection{})
 	srv.Use(otelgqlgen.New(otelgqlgen.WithTracerProvider(a.tp)))
+	srv.Use(a.loaderAggregate)
 	return srv
 }
 

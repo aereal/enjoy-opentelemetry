@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/aereal/enjoy-opentelemetry/graph"
+	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
 	"github.com/doug-martin/goqu/v9"
 	"github.com/go-sql-driver/mysql"
@@ -25,7 +26,7 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 		f = *first
 	}
 
-	groups, err := r.liverGroupRepository.GetBelongingGruopsByLiver(ctx, obj.ID, f)
+	groups, err := loaders.GetBelongingGroupsByLiverID(ctx, obj.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +34,9 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 	edges := make([]*models.LiverGroupEdge, 0, len(groups))
 	for _, group := range groups {
 		edges = append(edges, &models.LiverGroupEdge{Node: group})
+		if len(edges) >= f {
+			break
+		}
 	}
 	return &models.LiverGroupConnetion{
 		Edges:    edges,

@@ -17,6 +17,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/authz/oidcconfig"
 	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/aereal/enjoy-opentelemetry/downstream"
+	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
@@ -76,7 +77,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	rootResolver, err := resolvers.New(liverGroupRepository, dbx)
+	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
+	if err != nil {
+		return err
+	}
+	rootResolver, err := resolvers.New(dbx)
 	if err != nil {
 		return fmt.Errorf("resolvers.New: %w", err)
 	}
@@ -108,7 +113,7 @@ func run() error {
 	if err := json.NewDecoder(f).Decode(&authConfig); err != nil {
 		return err
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig)
+	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig, loaderAggregate)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}

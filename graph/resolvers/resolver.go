@@ -5,7 +5,6 @@ package resolvers
 import (
 	"errors"
 
-	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -13,20 +12,15 @@ import (
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
 
-func New(liverGroupRepository *domain.LiverGroupRepository, dbx *sqlx.DB) (*Resolver, error) {
-	if liverGroupRepository == nil {
-		return nil, errors.New("liverGroupRepository is nil")
-	}
+func New(dbx *sqlx.DB) (*Resolver, error) {
 	if dbx == nil {
 		return nil, errors.New("dbx is nil")
 	}
 	return &Resolver{
-		liverGroupRepository: liverGroupRepository,
-		dbx:                  dbx,
+		dbx: dbx,
 	}, nil
 }
 
 type Resolver struct {
-	liverGroupRepository *domain.LiverGroupRepository
-	dbx                  *sqlx.DB
+	dbx *sqlx.DB
 }
