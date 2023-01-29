@@ -71,6 +71,50 @@ type LiverGroupRepository struct {
 	db     *sqlx.DB
 }
 
+func (r *LiverGroupRepository) GetBelongingGroupsByLivers(ctx context.Context, liverIDs []uint64) (_ []*LiverBelongingGroup, err error) {
+	ctx, span := r.tracer.Start(ctx, "LiverGroupRepository.GetBelongingGruopsByLivers")
+	defer func() {
+		var code codes.Code
+		var desc string
+		if err != nil {
+			desc = err.Error()
+			code = codes.Error
+		} else {
+			code = codes.Ok
+		}
+		span.SetStatus(code, desc)
+		span.End()
+	}()
+	ids := make([]string, len(liverIDs))
+	for i, lid := range liverIDs {
+		ids[i] = strconv.FormatUint(lid, 10)
+	}
+	span.SetAttributes(
+		attribute.StringSlice("liver_ids", ids),
+	)
+
+	var groups []*LiverBelongingGroup
+	query, args, err := dialect.From("liver_groups").
+		Select("liver_groups.*", "liver_group_members.liver_id").
+		InnerJoin(
+			goqu.T("liver_group_members"),
+			goqu.On(
+				goqu.Ex{
+					"liver_group_members.liver_group_id": goqu.I("liver_groups.liver_group_id"),
+					"liver_group_members.liver_id":       liverIDs,
+				},
+			)).
+		ToSQL()
+	if err != nil {
+		return nil, err
+	}
+	if err := r.db.SelectContext(ctx, &groups, query, args...); err != nil {
+		return nil, err
+	}
+	span.SetAttributes(attribute.Int("count", len(groups)))
+	return groups, nil
+}
+
 func (r *LiverGroupRepository) GetBelongingGruopsByLiver(ctx context.Context, liverID uint64, first int) (_ []*Group, err error) {
 	ctx, span := r.tracer.Start(ctx, "LiverGroupRepository.GetBelongingGruopsByLiver")
 	defer func() {
