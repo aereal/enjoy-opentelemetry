@@ -20,7 +20,7 @@ import (
 )
 
 // Groups is the resolver for the groups field.
-func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *int) (*models.LiverGroupConnetion, error) {
+func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *int, after *string) (*models.LiverGroupConnetion, error) {
 	var f int
 	if first != nil {
 		f = *first
@@ -32,8 +32,22 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 	}
 
 	edges := make([]*models.LiverGroupEdge, 0, len(groups))
+	var afterCursor *models.GroupCursor
+	if after != nil {
+		var err error
+		afterCursor, err = models.NewGroupCursorFrom(*after)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, group := range groups {
-		edges = append(edges, &models.LiverGroupEdge{Node: group})
+		edge := &models.LiverGroupEdge{Node: group}
+		current := edge.CursorObject()
+		isBefore := afterCursor.IsBefore(current)
+		if isBefore {
+			continue
+		}
+		edges = append(edges, edge)
 		if len(edges) >= f {
 			break
 		}

@@ -196,11 +196,33 @@ type GroupCursor struct {
 	GroupID uint64
 }
 
+func NewGroupCursorFrom(v string) (*GroupCursor, error) {
+	b, err := cursorEncoding.DecodeString(v)
+	if err != nil {
+		return nil, err
+	}
+	var c GroupCursor
+	if err := json.Unmarshal(b, &c); err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (c *GroupCursor) IsBefore(other *GroupCursor) bool {
+	if c == nil || other == nil {
+		return true
+	}
+	return c.GroupID > other.GroupID
+}
+
 func (c *GroupCursor) IsEmpty() bool {
 	return c == nil || c == &GroupCursor{}
 }
 
 func (c *GroupCursor) Encode() string {
+	if c == nil {
+		return ""
+	}
 	b, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
@@ -219,11 +241,15 @@ type LiverGroupEdge struct {
 
 var _ Edge = (*LiverGroupEdge)(nil)
 
-func (g *LiverGroupEdge) Cursor() string {
+func (g *LiverGroupEdge) CursorObject() *GroupCursor {
 	if g == nil || g.Node == nil {
-		return ""
+		return nil
 	}
-	return (&GroupCursor{GroupID: g.Node.ID}).Encode()
+	return &GroupCursor{GroupID: g.Node.ID}
+}
+
+func (g *LiverGroupEdge) Cursor() string {
+	return g.CursorObject().Encode()
 }
 
 type LiverGroupConnetion struct {

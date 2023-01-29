@@ -21,7 +21,7 @@ import (
 // region    ************************** generated!.gotpl **************************
 
 type LiverResolver interface {
-	Groups(ctx context.Context, obj *models.Liver, first *int) (*models.LiverGroupConnetion, error)
+	Groups(ctx context.Context, obj *models.Liver, first *int, after *string) (*models.LiverGroupConnetion, error)
 }
 type LiverEdgeResolver interface {
 	Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error)
@@ -68,6 +68,15 @@ func (ec *executionContext) field_Liver_groups_args(ctx context.Context, rawArgs
 		}
 	}
 	args["first"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg1
 	return args, nil
 }
 
@@ -432,7 +441,7 @@ func (ec *executionContext) _Liver_groups(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Liver().Groups(rctx, obj, fc.Args["first"].(*int))
+		return ec.resolvers.Liver().Groups(rctx, obj, fc.Args["first"].(*int), fc.Args["after"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

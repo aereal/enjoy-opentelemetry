@@ -33,7 +33,7 @@ type Liver {
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
-  groups(first: Int): LiverGroupConnetion!
+  groups(first: Int, after: String): LiverGroupConnetion!
 }
 
 type PageInfo {

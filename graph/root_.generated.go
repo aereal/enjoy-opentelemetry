@@ -49,7 +49,7 @@ type ComplexityRoot struct {
 	Liver struct {
 		DebutedOn      func(childComplexity int) int
 		EnrollmentDays func(childComplexity int) int
-		Groups         func(childComplexity int, first *int) int
+		Groups         func(childComplexity int, first *int, after *string) int
 		Name           func(childComplexity int) int
 		RetiredOn      func(childComplexity int) int
 		Status         func(childComplexity int) int
@@ -138,7 +138,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Liver.Groups(childComplexity, args["first"].(*int)), true
+		return e.complexity.Liver.Groups(childComplexity, args["first"].(*int), args["after"].(*string)), true
 
 	case "Liver.name":
 		if e.complexity.Liver.Name == nil {
@@ -385,7 +385,7 @@ type Liver {
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
-  groups(first: Int): LiverGroupConnetion!
+  groups(first: Int, after: String): LiverGroupConnetion!
 }
 
 type PageInfo {
