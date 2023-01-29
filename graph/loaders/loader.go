@@ -8,7 +8,9 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/graph-gophers/dataloader/v7"
+	"github.com/hashicorp/go-multierror"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -81,6 +83,10 @@ type LiverGroupLoader struct {
 	liverGroupRepository *domain.LiverGroupRepository
 }
 
+var (
+	keyResultIndex = attribute.Key("dataloader.result_index")
+)
+
 type GroupResult = dataloader.Result[[]*domain.Group]
 
 func (l *LiverGroupLoader) LoadLiverGroups(ctx context.Context, keys []uint64) []*GroupResult {
@@ -101,12 +107,19 @@ func (l *LiverGroupLoader) LoadLiverGroups(ctx context.Context, keys []uint64) [
 	}
 
 	results := make([]*GroupResult, len(keys))
+	var merr *multierror.Error
 	for i, liverID := range keys {
 		if groups, ok := groupsByLiverID[liverID]; ok {
 			results[i] = &GroupResult{Data: groups}
 		} else {
-			results[i] = &GroupResult{Error: fmt.Errorf("belonging groups not found for liver ID: %v", liverID)}
+			err := fmt.Errorf("belonging groups not found for liver ID: %d", liverID)
+			results[i] = &GroupResult{Error: err}
+			merr = multierror.Append(merr, err)
+			span.RecordError(err, trace.WithAttributes(keyResultIndex.Int(i)))
 		}
+	}
+	if merr.ErrorOrNil() != nil {
+		span.SetStatus(codes.Error, merr.Error())
 	}
 	return results
 }
