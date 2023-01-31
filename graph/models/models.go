@@ -16,34 +16,34 @@ import (
 )
 
 type Edge interface {
-	Cursor() string
+	Cursor() (*Cursor, error)
 }
 
-func hasNextPage[T Edge](edges []T, first int) bool {
-	return len(edges) > first
-}
-
-func NewPageInfo[T Edge](edges []T, first int) *PageInfo {
+func NewPageInfo[E Edge](edges []E, first int) (*PageInfo, error) {
 	if len(edges) == 0 {
-		return &PageInfo{}
+		return &PageInfo{}, nil
 	}
-	hasNext := hasNextPage(edges, first)
+	hasNext := len(edges) > first
 	lastIdx := len(edges) - 1
 	if hasNext {
 		lastIdx = lastIdx - 1
 	}
-	return &PageInfo{
-		HasNextPage: hasNext,
-		StartCursor: ref(edges[0].Cursor()),
-		EndCursor:   ref(edges[lastIdx].Cursor()),
+	pi := &PageInfo{HasNextPage: hasNext}
+	{
+		cursor, err := edges[0].Cursor()
+		if err != nil {
+			return nil, err
+		}
+		pi.StartCursor = cursor
 	}
-}
-
-func NewEdges[T Edge](edges []T, first int) []T {
-	if hasNextPage(edges, first) {
-		return edges[:first]
+	{
+		cursor, err := edges[lastIdx].Cursor()
+		if err != nil {
+			return nil, err
+		}
+		pi.EndCursor = cursor
 	}
-	return edges
+	return pi, nil
 }
 
 type Liver struct {
@@ -83,49 +83,22 @@ type LiverEdge struct {
 
 var _ Edge = &LiverEdge{}
 
-func (e *LiverEdge) Cursor() string {
-	return (&LiverCursor{LiverID: e.ID}).Encode()
-}
-
-func ref[T any](v T) *T {
-	return &v
+func (e *LiverEdge) Cursor() (*Cursor, error) {
+	cursor := &Cursor{Type: "LiverEdge"}
+	var err error
+	cursor.Value, err = json.Marshal(&LiverCursorValue{LiverID: e.ID})
+	if err != nil {
+		return nil, err
+	}
+	return cursor, nil
 }
 
 var (
-	cursorEncoding   = base64.StdEncoding
-	emptyLiverCursor = &LiverCursor{}
+	cursorEncoding = base64.StdEncoding
 )
 
-func EmptyLiverCursor() *LiverCursor {
-	return emptyLiverCursor
-}
-
-func NewLiverCursorFrom(v string) (*LiverCursor, error) {
-	b, err := cursorEncoding.DecodeString(v)
-	if err != nil {
-		return nil, err
-	}
-	var c LiverCursor
-	if err := json.Unmarshal(b, &c); err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-type LiverCursor struct {
+type LiverCursorValue struct {
 	LiverID uint64
-}
-
-func (c *LiverCursor) IsEmpty() bool {
-	return c == nil || c == emptyLiverCursor
-}
-
-func (c *LiverCursor) Encode() string {
-	b, err := json.Marshal(c)
-	if err != nil {
-		panic(err)
-	}
-	return cursorEncoding.EncodeToString(b)
 }
 
 const (
@@ -192,42 +165,8 @@ func (s *LiverStatus) UnmarshalGQLContext(_ context.Context, v any) error {
 	return s.UnmarshalText([]byte(sv))
 }
 
-type GroupCursor struct {
+type GroupCursorValue struct {
 	GroupID uint64
-}
-
-func NewGroupCursorFrom(v string) (*GroupCursor, error) {
-	b, err := cursorEncoding.DecodeString(v)
-	if err != nil {
-		return nil, err
-	}
-	var c GroupCursor
-	if err := json.Unmarshal(b, &c); err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-func (c *GroupCursor) IsBefore(other *GroupCursor) bool {
-	if c == nil || other == nil {
-		return true
-	}
-	return c.GroupID > other.GroupID
-}
-
-func (c *GroupCursor) IsEmpty() bool {
-	return c == nil || c == &GroupCursor{}
-}
-
-func (c *GroupCursor) Encode() string {
-	if c == nil {
-		return ""
-	}
-	b, err := json.Marshal(c)
-	if err != nil {
-		panic(err)
-	}
-	return cursorEncoding.EncodeToString(b)
 }
 
 type Group struct {
@@ -241,18 +180,110 @@ type LiverGroupEdge struct {
 
 var _ Edge = (*LiverGroupEdge)(nil)
 
-func (g *LiverGroupEdge) CursorObject() *GroupCursor {
-	if g == nil || g.Node == nil {
-		return nil
+func (g *LiverGroupEdge) Cursor() (*Cursor, error) {
+	cursor := &Cursor{Type: "LiverGroupEdge"}
+	var err error
+	cursor.Value, err = json.Marshal(&GroupCursorValue{GroupID: g.Node.ID})
+	if err != nil {
+		return nil, err
 	}
-	return &GroupCursor{GroupID: g.Node.ID}
-}
-
-func (g *LiverGroupEdge) Cursor() string {
-	return g.CursorObject().Encode()
+	return cursor, nil
 }
 
 type LiverGroupConnetion struct {
 	Edges []*LiverGroupEdge `json:"edges"`
 	First int
+}
+
+type Cursor struct {
+	Type  string
+	Value json.RawMessage
+}
+
+var _ interface {
+	graphql.ContextMarshaler
+	graphql.ContextUnmarshaler
+	encoding.TextMarshaler
+	encoding.TextUnmarshaler
+} = (*Cursor)(nil)
+
+func ParseCursor[T any](after *string, v *T) error {
+	if after == nil {
+		return nil
+	}
+	cursor := &Cursor{}
+	if err := cursor.UnmarshalText([]byte(*after)); err != nil {
+		return fmt.Errorf("Cursor.UnmarshalText: %w", err)
+	}
+	if err := json.Unmarshal(cursor.Value, v); err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
+	}
+	return nil
+}
+
+func (c *Cursor) Encode() (string, error) {
+	b, err := c.MarshalText()
+	if err != nil {
+		return "", fmt.Errorf("Cursor.Encode: %w", err)
+	}
+	return string(b), nil
+}
+
+type underlyingCursor struct {
+	Type  string
+	Value json.RawMessage
+}
+
+func (c *Cursor) MarshalText() ([]byte, error) {
+	if c == nil {
+		return nil, errors.New("Cursor is nil")
+	}
+	b, err := json.Marshal(underlyingCursor{Type: c.Type, Value: c.Value})
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal: %w", err)
+	}
+	dst := make([]byte, cursorEncoding.EncodedLen(len(b)))
+	cursorEncoding.Encode(dst, b)
+	return dst, nil
+}
+
+func (c *Cursor) UnmarshalText(v []byte) error {
+	decoded, err := cursorEncoding.DecodeString(string(v))
+	if err != nil {
+		return fmt.Errorf("DecodeString: %w", err)
+	}
+	var uc underlyingCursor
+	if err := json.Unmarshal(decoded, &uc); err != nil {
+		return fmt.Errorf("json.Unmarshal: %w", err)
+	}
+	c.Type = uc.Type
+	c.Value = uc.Value
+	return nil
+}
+
+func (c Cursor) MarshalGQLContext(_ context.Context, w io.Writer) error {
+	s, err := c.Encode()
+	if err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, strconv.Quote(s)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Cursor) UnmarshalGQLContext(_ context.Context, v any) error {
+	switch v := v.(type) {
+	case string:
+		if err := c.UnmarshalText([]byte(v)); err != nil {
+			return err
+		}
+	case []byte:
+		if err := c.UnmarshalText(v); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unsupported type: %T", v)
+	}
+	return nil
 }

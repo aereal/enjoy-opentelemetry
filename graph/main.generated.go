@@ -21,7 +21,7 @@ import (
 // region    ************************** generated!.gotpl **************************
 
 type LiverResolver interface {
-	Groups(ctx context.Context, obj *models.Liver, first *int, after *string) (*models.LiverGroupConnetion, error)
+	Groups(ctx context.Context, obj *models.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error)
 }
 type LiverEdgeResolver interface {
 	Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error)
@@ -34,7 +34,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	Liver(ctx context.Context, name string) (*models.Liver, error)
-	Livers(ctx context.Context, first *int, after *string, orderBy *models.LiverOrder) (*models.LiverConnection, error)
+	Livers(ctx context.Context, first *int, after *models.Cursor, orderBy *models.LiverOrder) (*models.LiverConnection, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -68,10 +68,10 @@ func (ec *executionContext) field_Liver_groups_args(ctx context.Context, rawArgs
 		}
 	}
 	args["first"] = arg0
-	var arg1 *string
+	var arg1 *models.Cursor
 	if tmp, ok := rawArgs["after"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg1, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -137,10 +137,10 @@ func (ec *executionContext) field_Query_livers_args(ctx context.Context, rawArgs
 		}
 	}
 	args["first"] = arg0
-	var arg1 *string
+	var arg1 *models.Cursor
 	if tmp, ok := rawArgs["after"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		arg1, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +441,7 @@ func (ec *executionContext) _Liver_groups(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Liver().Groups(rctx, obj, fc.Args["first"].(*int), fc.Args["after"].(*string))
+		return ec.resolvers.Liver().Groups(rctx, obj, fc.Args["first"].(*int), fc.Args["after"].(*models.Cursor))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -664,7 +664,7 @@ func (ec *executionContext) _LiverEdge_cursor(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Cursor(), nil
+		return obj.Cursor()
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -676,9 +676,9 @@ func (ec *executionContext) _LiverEdge_cursor(ctx context.Context, field graphql
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*models.Cursor)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_LiverEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -688,7 +688,7 @@ func (ec *executionContext) fieldContext_LiverEdge_cursor(ctx context.Context, f
 		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -860,7 +860,7 @@ func (ec *executionContext) _LiverGroupEdge_cursor(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Cursor(), nil
+		return obj.Cursor()
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -872,9 +872,9 @@ func (ec *executionContext) _LiverGroupEdge_cursor(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*models.Cursor)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_LiverGroupEdge_cursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -884,7 +884,7 @@ func (ec *executionContext) fieldContext_LiverGroupEdge_cursor(ctx context.Conte
 		IsMethod:   true,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1079,9 +1079,9 @@ func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*models.Cursor)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PageInfo_startCursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1091,7 +1091,7 @@ func (ec *executionContext) fieldContext_PageInfo_startCursor(ctx context.Contex
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1120,9 +1120,9 @@ func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graph
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(*models.Cursor)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_PageInfo_endCursor(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1132,7 +1132,7 @@ func (ec *executionContext) fieldContext_PageInfo_endCursor(ctx context.Context,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			return nil, errors.New("field of type Cursor does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1242,7 +1242,7 @@ func (ec *executionContext) _Query_livers(ctx context.Context, field graphql.Col
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().Livers(rctx, fc.Args["first"].(*int), fc.Args["after"].(*string), fc.Args["orderBy"].(*models.LiverOrder))
+			return ec.resolvers.Query().Livers(rctx, fc.Args["first"].(*int), fc.Args["after"].(*models.Cursor), fc.Args["orderBy"].(*models.LiverOrder))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			scopes, err := ec.unmarshalOScope2ᚕgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐScopeᚄ(ctx, []interface{}{"READ"})
@@ -1910,6 +1910,22 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx context.Context, v interface{}) (*models.Cursor, error) {
+	var res = new(models.Cursor)
+	err := res.UnmarshalGQLContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx context.Context, sel ast.SelectionSet, v *models.Cursor) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return graphql.WrapContextMarshaler(ctx, v)
+}
+
 func (ec *executionContext) marshalNGroup2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐGroup(ctx context.Context, sel ast.SelectionSet, v *domain.Group) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -2137,6 +2153,22 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) unmarshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx context.Context, v interface{}) (*models.Cursor, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(models.Cursor)
+	err := res.UnmarshalGQLContext(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCursor2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐCursor(ctx context.Context, sel ast.SelectionSet, v *models.Cursor) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.WrapContextMarshaler(ctx, v)
 }
 
 func (ec *executionContext) marshalOLiver2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiver(ctx context.Context, sel ast.SelectionSet, v *models.Liver) graphql.Marshaler {

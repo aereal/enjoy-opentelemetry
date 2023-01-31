@@ -49,7 +49,7 @@ type ComplexityRoot struct {
 	Liver struct {
 		DebutedOn      func(childComplexity int) int
 		EnrollmentDays func(childComplexity int) int
-		Groups         func(childComplexity int, first *int, after *string) int
+		Groups         func(childComplexity int, first *int, after *models.Cursor) int
 		Name           func(childComplexity int) int
 		RetiredOn      func(childComplexity int) int
 		Status         func(childComplexity int) int
@@ -88,7 +88,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Liver  func(childComplexity int, name string) int
-		Livers func(childComplexity int, first *int, after *string, orderBy *models.LiverOrder) int
+		Livers func(childComplexity int, first *int, after *models.Cursor, orderBy *models.LiverOrder) int
 	}
 }
 
@@ -138,7 +138,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Liver.Groups(childComplexity, args["first"].(*int), args["after"].(*string)), true
+		return e.complexity.Liver.Groups(childComplexity, args["first"].(*int), args["after"].(*models.Cursor)), true
 
 	case "Liver.name":
 		if e.complexity.Liver.Name == nil {
@@ -279,7 +279,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Livers(childComplexity, args["first"].(*int), args["after"].(*string), args["orderBy"].(*models.LiverOrder)), true
+		return e.complexity.Query.Livers(childComplexity, args["first"].(*int), args["after"].(*models.Cursor), args["orderBy"].(*models.LiverOrder)), true
 
 	}
 	return 0, false
@@ -354,6 +354,8 @@ var sources = []*ast.Source{
 
 scalar Time
 
+scalar Cursor
+
 enum Scope {
   READ
   WRITE
@@ -371,7 +373,7 @@ type Group {
 
 type LiverGroupEdge {
   node: Group!
-  cursor: String!
+  cursor: Cursor!
 }
 
 type LiverGroupConnetion {
@@ -385,19 +387,19 @@ type Liver {
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
-  groups(first: Int, after: String): LiverGroupConnetion!
+  groups(first: Int, after: Cursor): LiverGroupConnetion!
 }
 
 type PageInfo {
   hasPreviousPage: Boolean!
   hasNextPage: Boolean!
-  startCursor: String
-  endCursor: String
+  startCursor: Cursor
+  endCursor: Cursor
 }
 
 type LiverEdge {
   node: Liver!
-  cursor: String!
+  cursor: Cursor!
 }
 
 type LiverConnection {
@@ -423,7 +425,7 @@ type Query {
   liver(name: String!): Liver @authenticate(scopes: [READ])
   livers(
     first: Int = 0,
-    after: String,
+    after: Cursor,
     orderBy: LiverOrder
   ): LiverConnection! @authenticate(scopes: [READ])
 }

@@ -1,51 +1,70 @@
 package models_test
 
 import (
+	"bytes"
+	"context"
+	"strconv"
 	"testing"
 
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
+	"github.com/google/go-cmp/cmp"
 )
 
-func TestGroupCursor_IsBefore(t *testing.T) {
-	testCases := []struct {
-		name string
-		lhs  *models.GroupCursor
-		rhs  *models.GroupCursor
-		want bool
-	}{
-		{
-			name: "nil vs nil",
-			want: true,
-		},
-		{
-			name: "nil vs 1",
-			rhs:  &models.GroupCursor{GroupID: 1},
-			want: true,
-		},
-		{
-			name: "1 vs 1",
-			lhs:  &models.GroupCursor{GroupID: 1},
-			rhs:  &models.GroupCursor{GroupID: 1},
-			want: false,
-		},
-		{
-			name: "1 vs 2",
-			lhs:  &models.GroupCursor{GroupID: 1},
-			rhs:  &models.GroupCursor{GroupID: 2},
-			want: false,
-		},
-		{
-			name: "2 vs 1",
-			lhs:  &models.GroupCursor{GroupID: 2},
-			rhs:  &models.GroupCursor{GroupID: 1},
-			want: true,
-		},
-	}
-	for _, tc := range testCases {
+var cursorTestCases = []struct {
+	name         string
+	cursor       *models.Cursor
+	encodedValue string
+}{
+	{
+		name:         "int",
+		cursor:       &models.Cursor{Type: "Group", Value: []byte("1234")},
+		encodedValue: "eyJUeXBlIjoiR3JvdXAiLCJWYWx1ZSI6MTIzNH0=",
+	},
+	{
+		name:         "string",
+		cursor:       &models.Cursor{Type: "Group", Value: []byte(`"abc"`)},
+		encodedValue: "eyJUeXBlIjoiR3JvdXAiLCJWYWx1ZSI6ImFiYyJ9",
+	},
+}
+
+func TestCursor_Encode(t *testing.T) {
+	for _, tc := range cursorTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.lhs.IsBefore(tc.rhs)
-			if got != tc.want {
-				t.Errorf("want=%v got=%v", tc.want, got)
+			got, err := tc.cursor.Encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.encodedValue {
+				t.Errorf("want=%q got=%q", tc.encodedValue, got)
+			}
+		})
+	}
+}
+
+func TestCursor_MarshalGQLContext(t *testing.T) {
+	for _, tc := range cursorTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
+			if err := tc.cursor.MarshalGQLContext(context.Background(), buf); err != nil {
+				t.Fatal(err)
+			}
+			got := buf.String()
+			if got != strconv.Quote(tc.encodedValue) {
+				t.Errorf("want=%q got=%q", tc.encodedValue, got)
+			}
+		})
+	}
+}
+
+func TestCursor_UnmarshalGQLContext(t *testing.T) {
+	for _, tc := range cursorTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := &models.Cursor{}
+			if err := got.UnmarshalGQLContext(context.Background(), tc.encodedValue); err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(tc.cursor, got); diff != "" {
+				t.Errorf("-want, +got:\n%s", diff)
 			}
 		})
 	}

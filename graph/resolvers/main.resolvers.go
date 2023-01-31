@@ -6,6 +6,7 @@ package resolvers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -20,10 +21,16 @@ import (
 )
 
 // Groups is the resolver for the groups field.
-func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *int, after *string) (*models.LiverGroupConnetion, error) {
+func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error) {
 	var f int
 	if first != nil {
 		f = *first
+	}
+	cv := &models.GroupCursorValue{}
+	if after != nil {
+		if err := json.Unmarshal(after.Value, cv); err != nil {
+			return nil, err
+		}
 	}
 
 	groups, err := loaders.GetBelongingGroupsByLiverID(ctx, obj.ID)
@@ -32,21 +39,11 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 	}
 
 	edges := make([]*models.LiverGroupEdge, 0, len(groups))
-	var afterCursor *models.GroupCursor
-	if after != nil {
-		var err error
-		afterCursor, err = models.NewGroupCursorFrom(*after)
-		if err != nil {
-			return nil, err
-		}
-	}
 	for _, group := range groups {
-		edge := &models.LiverGroupEdge{Node: group}
-		current := edge.CursorObject()
-		isBefore := afterCursor.IsBefore(current)
-		if isBefore {
+		if group.ID < cv.GroupID {
 			continue
 		}
+		edge := &models.LiverGroupEdge{Node: group}
 		edges = append(edges, edge)
 		if len(edges) >= f {
 			break
@@ -65,7 +62,7 @@ func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*m
 
 // PageInfo is the resolver for the pageInfo field.
 func (r *liverGroupConnetionResolver) PageInfo(ctx context.Context, obj *models.LiverGroupConnetion) (*models.PageInfo, error) {
-	return models.NewPageInfo(obj.Edges, obj.First), nil
+	return models.NewPageInfo(obj.Edges, obj.First)
 }
 
 // RegisterLiver is the resolver for the registerLiver field.
@@ -108,10 +105,10 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, 
 }
 
 // Livers is the resolver for the livers field.
-func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, orderBy *models.LiverOrder) (*models.LiverConnection, error) {
+func (r *queryResolver) Livers(ctx context.Context, first *int, after *models.Cursor, orderBy *models.LiverOrder) (*models.LiverConnection, error) {
 	if first == nil || *first <= 0 {
 		return &models.LiverConnection{
-			PageInfo: models.NewPageInfo[*models.LiverEdge](nil, 0),
+			PageInfo: &models.PageInfo{},
 		}, nil
 	}
 	firstInt := *first
@@ -121,11 +118,9 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, o
 			Direction: models.OrderDirectionAsc,
 		}
 	}
-	cursor := models.EmptyLiverCursor()
+	cv := &models.LiverCursorValue{}
 	if after != nil {
-		var err error
-		cursor, err = models.NewLiverCursorFrom(*after)
-		if err != nil {
+		if err := json.Unmarshal(after.Value, cv); err != nil {
 			return nil, err
 		}
 	}
@@ -134,8 +129,8 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, o
 		Limit(limit).
 		Order(toOrderBy(orderBy))
 	edges := make([]*models.LiverEdge, 0, limit)
-	if !cursor.IsEmpty() {
-		qb = qb.Where(goqu.C("liver_id").Gt(cursor.LiverID))
+	if cv != nil {
+		qb = qb.Where(goqu.C("liver_id").Gt(cv.LiverID))
 	}
 	query, args, err := qb.ToSQL()
 	if err != nil {
@@ -144,9 +139,16 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *string, o
 	if err := r.dbx.SelectContext(ctx, &edges, query, args...); err != nil {
 		return nil, fmt.Errorf("SelectContext: %w", err)
 	}
+	pi, err := models.NewPageInfo(edges, firstInt)
+	if err != nil {
+		return nil, err
+	}
+	if len(edges) > firstInt {
+		edges = edges[:firstInt]
+	}
 	conn := &models.LiverConnection{
-		Edges:    models.NewEdges(edges, firstInt),
-		PageInfo: models.NewPageInfo(edges, firstInt),
+		Edges:    edges,
+		PageInfo: pi,
 	}
 	return conn, nil
 }

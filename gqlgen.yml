@@ -40,3 +40,6 @@ models:
     fields:
       pageInfo:
         resolver: true
+  Cursor:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.Cursor
