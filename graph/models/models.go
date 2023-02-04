@@ -18,15 +18,11 @@ type Edge interface {
 	Cursor() (*Cursor, error)
 }
 
-func NewPageInfo[E Edge](edges []E, first int) (*PageInfo, error) {
+func NewPageInfo[E Edge](edges []E, hasNext bool) (*PageInfo, error) {
 	if len(edges) == 0 {
 		return &PageInfo{}, nil
 	}
-	hasNext := len(edges) > first
 	lastIdx := len(edges) - 1
-	if hasNext {
-		lastIdx = lastIdx - 1
-	}
 	pi := &PageInfo{HasNextPage: hasNext}
 	{
 		cursor, err := edges[0].Cursor()
@@ -90,8 +86,8 @@ func (g *LiverGroupEdge) Cursor() (*Cursor, error) {
 }
 
 type LiverGroupConnetion struct {
-	Edges []*LiverGroupEdge `json:"edges"`
-	First int
+	Edges   []*LiverGroupEdge `json:"edges"`
+	HasNext bool
 }
 
 type Cursor struct {

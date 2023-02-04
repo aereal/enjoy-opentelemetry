@@ -73,15 +73,19 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}
-	liverGroupRepository, err := domain.NewLiverGroupRepository(domain.WithDB(dbx), domain.WithTracerProvider(downstreamTracerProvider))
+	newRepositoryOptions := []domain.NewRepositoryOption{
+		domain.WithDB(dbx),
+		domain.WithTracerProvider(downstreamTracerProvider),
+	}
+	liverGroupRepository, err := domain.NewLiverGroupRepository(newRepositoryOptions...)
 	if err != nil {
 		return err
 	}
-	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
+	liverRepository, err := domain.NewLiverRepository(newRepositoryOptions...)
 	if err != nil {
 		return err
 	}
-	rootResolver, err := resolvers.New(dbx)
+	rootResolver, err := resolvers.New(liverRepository)
 	if err != nil {
 		return fmt.Errorf("resolvers.New: %w", err)
 	}
@@ -111,6 +115,10 @@ func run() error {
 	defer f.Close()
 	var authConfig oauth2.Config
 	if err := json.NewDecoder(f).Decode(&authConfig); err != nil {
+		return err
+	}
+	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
+	if err != nil {
 		return err
 	}
 	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig, loaderAggregate)

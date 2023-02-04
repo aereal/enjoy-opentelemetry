@@ -43,3 +43,6 @@ models:
   Cursor:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.Cursor
+  OrderDirection:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/domain.OrderDirection

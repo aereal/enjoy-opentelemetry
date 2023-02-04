@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/aereal/enjoy-opentelemetry/domain"
 )
 
 type LiverConnection struct {
@@ -14,8 +16,8 @@ type LiverConnection struct {
 }
 
 type LiverOrder struct {
-	Field     LiverOrderField `json:"field"`
-	Direction OrderDirection  `json:"direction"`
+	Field     LiverOrderField       `json:"field"`
+	Direction domain.OrderDirection `json:"direction"`
 }
 
 type PageInfo struct {
@@ -61,46 +63,5 @@ func (e *LiverOrderField) UnmarshalGQL(v interface{}) error {
 }
 
 func (e LiverOrderField) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type OrderDirection string
-
-const (
-	OrderDirectionAsc  OrderDirection = "ASC"
-	OrderDirectionDesc OrderDirection = "DESC"
-)
-
-var AllOrderDirection = []OrderDirection{
-	OrderDirectionAsc,
-	OrderDirectionDesc,
-}
-
-func (e OrderDirection) IsValid() bool {
-	switch e {
-	case OrderDirectionAsc, OrderDirectionDesc:
-		return true
-	}
-	return false
-}
-
-func (e OrderDirection) String() string {
-	return string(e)
-}
-
-func (e *OrderDirection) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = OrderDirection(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid OrderDirection", str)
-	}
-	return nil
-}
-
-func (e OrderDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }

@@ -7,18 +7,11 @@ package resolvers
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
-	"strconv"
 
 	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
-	goqu "github.com/doug-martin/goqu/v9"
-	"github.com/go-sql-driver/mysql"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // Groups is the resolver for the groups field.
@@ -51,8 +44,8 @@ func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *in
 		}
 	}
 	return &models.LiverGroupConnetion{
-		Edges: edges,
-		First: f,
+		Edges:   edges,
+		HasNext: len(groups) > f,
 	}, nil
 }
 
@@ -63,46 +56,24 @@ func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*d
 
 // PageInfo is the resolver for the pageInfo field.
 func (r *liverGroupConnetionResolver) PageInfo(ctx context.Context, obj *models.LiverGroupConnetion) (*models.PageInfo, error) {
-	return models.NewPageInfo(obj.Edges, obj.First)
+	return models.NewPageInfo(obj.Edges, obj.HasNext)
 }
 
 // RegisterLiver is the resolver for the registerLiver field.
 func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool, error) {
-	query, args, err := liversTable.
-		Insert().
-		Cols("name").
-		Vals(goqu.Vals{name}).
-		ToSQL()
-	if err != nil {
+	if err := r.liverRepository.RegisterLiver(ctx, name); err != nil {
 		return false, err
-	}
-	if _, err := r.dbx.ExecContext(ctx, query, args...); err != nil {
-		var merr *mysql.MySQLError
-		if errors.As(err, &merr) {
-			span := trace.SpanFromContext(ctx)
-			span.SetAttributes(attribute.String("mysql.errors.number", strconv.FormatUint(uint64(merr.Number), 10)))
-		}
-		return false, fmt.Errorf("NamedExecContext: %w", err)
 	}
 	return true, nil
 }
 
 // Liver is the resolver for the liver field.
 func (r *queryResolver) Liver(ctx context.Context, name string) (*domain.Liver, error) {
-	query, args, err := liversTable.
-		Where(
-			goqu.C("name").Eq(name),
-		).
-		Limit(1).
-		ToSQL()
+	liver, err := r.liverRepository.GetLiverByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	var liver domain.Liver
-	if err := r.dbx.GetContext(ctx, &liver, query, args...); err != nil {
-		return nil, fmt.Errorf("GetContext: %w", err)
-	}
-	return &liver, nil
+	return liver, nil
 }
 
 // Livers is the resolver for the livers field.
@@ -113,11 +84,9 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *models.Cu
 		}, nil
 	}
 	firstInt := *first
+	var direction domain.OrderDirection
 	if orderBy == nil {
-		orderBy = &models.LiverOrder{
-			Field:     models.LiverOrderFieldDatabaseID,
-			Direction: models.OrderDirectionAsc,
-		}
+		direction = domain.OrderDirectionAsc
 	}
 	cv := &models.LiverCursorValue{}
 	if after != nil {
@@ -125,27 +94,17 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *models.Cu
 			return nil, err
 		}
 	}
-	limit := uint(firstInt + 1)
-	qb := liversTable.
-		Limit(limit).
-		Order(toOrderBy(orderBy))
-	edges := make([]*models.LiverEdge, 0, limit)
-	if cv != nil {
-		qb = qb.Where(goqu.C("liver_id").Gt(cv.LiverID))
-	}
-	query, args, err := qb.ToSQL()
+	livers, hasNext, err := r.liverRepository.GetLivers(ctx, uint(firstInt), domain.WithOrderDirection(direction))
 	if err != nil {
 		return nil, err
 	}
-	if err := r.dbx.SelectContext(ctx, &edges, query, args...); err != nil {
-		return nil, fmt.Errorf("SelectContext: %w", err)
+	edges := make([]*models.LiverEdge, len(livers))
+	for i, liver := range livers {
+		edges[i] = &models.LiverEdge{Liver: liver}
 	}
-	pi, err := models.NewPageInfo(edges, firstInt)
+	pi, err := models.NewPageInfo(edges, hasNext)
 	if err != nil {
 		return nil, err
-	}
-	if len(edges) > firstInt {
-		edges = edges[:firstInt]
 	}
 	conn := &models.LiverConnection{
 		Edges:    edges,

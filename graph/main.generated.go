@@ -1468,7 +1468,7 @@ func (ec *executionContext) unmarshalInputLiverOrder(ctx context.Context, obj in
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("direction"))
-			it.Direction, err = ec.unmarshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐOrderDirection(ctx, v)
+			it.Direction, err = ec.unmarshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐOrderDirection(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2106,13 +2106,13 @@ func (ec *executionContext) marshalNLiverStatus2githubᚗcomᚋaerealᚋenjoyᚑ
 	return graphql.WrapContextMarshaler(ctx, v)
 }
 
-func (ec *executionContext) unmarshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐOrderDirection(ctx context.Context, v interface{}) (models.OrderDirection, error) {
-	var res models.OrderDirection
+func (ec *executionContext) unmarshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐOrderDirection(ctx context.Context, v interface{}) (domain.OrderDirection, error) {
+	var res domain.OrderDirection
 	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v models.OrderDirection) graphql.Marshaler {
+func (ec *executionContext) marshalNOrderDirection2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋdomainᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v domain.OrderDirection) graphql.Marshaler {
 	return v
 }
 
