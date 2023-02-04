@@ -10,11 +10,6 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/domain"
 )
 
-type LiverConnection struct {
-	Edges    []*LiverEdge `json:"edges"`
-	PageInfo *PageInfo    `json:"pageInfo"`
-}
-
 type LiverOrder struct {
 	Field     LiverOrderField       `json:"field"`
 	Direction domain.OrderDirection `json:"direction"`

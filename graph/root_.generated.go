@@ -31,6 +31,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Liver() LiverResolver
+	LiverConnection() LiverConnectionResolver
 	LiverEdge() LiverEdgeResolver
 	LiverGroupConnetion() LiverGroupConnetionResolver
 	Mutation() MutationResolver

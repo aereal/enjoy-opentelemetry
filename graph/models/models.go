@@ -182,3 +182,8 @@ func (c *Cursor) UnmarshalGQLContext(_ context.Context, v any) error {
 	}
 	return nil
 }
+
+type LiverConnection struct {
+	Edges   []*LiverEdge `json:"edges"`
+	HasNext bool
+}

@@ -49,6 +49,18 @@ func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *in
 	}, nil
 }
 
+// PageInfo is the resolver for the pageInfo field.
+func (r *liverConnectionResolver) PageInfo(ctx context.Context, obj *models.LiverConnection) (*models.PageInfo, error) {
+	if len(obj.Edges) == 0 {
+		return &models.PageInfo{}, nil
+	}
+	pi, err := models.NewPageInfo(obj.Edges, obj.HasNext)
+	if err != nil {
+		return nil, err
+	}
+	return pi, nil
+}
+
 // Node is the resolver for the node field.
 func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*domain.Liver, error) {
 	return obj.Liver, nil
@@ -79,9 +91,7 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*domain.Liver, 
 // Livers is the resolver for the livers field.
 func (r *queryResolver) Livers(ctx context.Context, first *int, after *models.Cursor, orderBy *models.LiverOrder) (*models.LiverConnection, error) {
 	if first == nil || *first <= 0 {
-		return &models.LiverConnection{
-			PageInfo: &models.PageInfo{},
-		}, nil
+		return &models.LiverConnection{}, nil
 	}
 	firstInt := *first
 	var direction domain.OrderDirection
@@ -102,19 +112,20 @@ func (r *queryResolver) Livers(ctx context.Context, first *int, after *models.Cu
 	for i, liver := range livers {
 		edges[i] = &models.LiverEdge{Liver: liver}
 	}
-	pi, err := models.NewPageInfo(edges, hasNext)
-	if err != nil {
-		return nil, err
-	}
 	conn := &models.LiverConnection{
-		Edges:    edges,
-		PageInfo: pi,
+		Edges:   edges,
+		HasNext: hasNext,
 	}
 	return conn, nil
 }
 
 // Liver returns graph.LiverResolver implementation.
 func (r *Resolver) Liver() graph.LiverResolver { return &liverResolver{r} }
+
+// LiverConnection returns graph.LiverConnectionResolver implementation.
+func (r *Resolver) LiverConnection() graph.LiverConnectionResolver {
+	return &liverConnectionResolver{r}
+}
 
 // LiverEdge returns graph.LiverEdgeResolver implementation.
 func (r *Resolver) LiverEdge() graph.LiverEdgeResolver { return &liverEdgeResolver{r} }
@@ -131,6 +142,7 @@ func (r *Resolver) Mutation() graph.MutationResolver { return &mutationResolver{
 func (r *Resolver) Query() graph.QueryResolver { return &queryResolver{r} }
 
 type liverResolver struct{ *Resolver }
+type liverConnectionResolver struct{ *Resolver }
 type liverEdgeResolver struct{ *Resolver }
 type liverGroupConnetionResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }

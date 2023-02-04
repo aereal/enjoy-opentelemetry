@@ -23,6 +23,9 @@ import (
 type LiverResolver interface {
 	Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error)
 }
+type LiverConnectionResolver interface {
+	PageInfo(ctx context.Context, obj *models.LiverConnection) (*models.PageInfo, error)
+}
 type LiverEdgeResolver interface {
 	Node(ctx context.Context, obj *models.LiverEdge) (*domain.Liver, error)
 }
@@ -552,7 +555,7 @@ func (ec *executionContext) _LiverConnection_pageInfo(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.PageInfo, nil
+		return ec.resolvers.LiverConnection().PageInfo(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -573,8 +576,8 @@ func (ec *executionContext) fieldContext_LiverConnection_pageInfo(ctx context.Co
 	fc = &graphql.FieldContext{
 		Object:     "LiverConnection",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "hasPreviousPage":
@@ -1602,15 +1605,28 @@ func (ec *executionContext) _LiverConnection(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._LiverConnection_edges(ctx, field, obj)
 
 			if out.Values[i] == graphql.Null {
-				invalids++
+				atomic.AddUint32(&invalids, 1)
 			}
 		case "pageInfo":
+			field := field
 
-			out.Values[i] = ec._LiverConnection_pageInfo(ctx, field, obj)
-
-			if out.Values[i] == graphql.Null {
-				invalids++
+			innerFunc := func(ctx context.Context) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._LiverConnection_pageInfo(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
 			}
+
+			out.Concurrently(i, func() graphql.Marshaler {
+				return innerFunc(ctx)
+
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

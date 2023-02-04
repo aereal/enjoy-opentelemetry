@@ -40,6 +40,9 @@ models:
     fields:
       pageInfo:
         resolver: true
+  LiverConnection:
+    model:
+      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverConnection
   Cursor:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.Cursor
