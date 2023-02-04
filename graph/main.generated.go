@@ -21,7 +21,7 @@ import (
 // region    ************************** generated!.gotpl **************************
 
 type LiverResolver interface {
-	Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error)
+	Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnection, error)
 }
 type LiverConnectionResolver interface {
 	PageInfo(ctx context.Context, obj *models.LiverConnection) (*models.PageInfo, error)
@@ -30,7 +30,7 @@ type LiverEdgeResolver interface {
 	Node(ctx context.Context, obj *models.LiverEdge) (*domain.Liver, error)
 }
 type LiverGroupConnetionResolver interface {
-	PageInfo(ctx context.Context, obj *models.LiverGroupConnetion) (*models.PageInfo, error)
+	PageInfo(ctx context.Context, obj *models.LiverGroupConnection) (*models.PageInfo, error)
 }
 type MutationResolver interface {
 	RegisterLiver(ctx context.Context, name string) (bool, error)
@@ -456,9 +456,9 @@ func (ec *executionContext) _Liver_groups(ctx context.Context, field graphql.Col
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*models.LiverGroupConnetion)
+	res := resTmp.(*models.LiverGroupConnection)
 	fc.Result = res
-	return ec.marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx, field.Selections, res)
+	return ec.marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Liver_groups(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -697,7 +697,7 @@ func (ec *executionContext) fieldContext_LiverEdge_cursor(ctx context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _LiverGroupConnetion_edges(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnetion) (ret graphql.Marshaler) {
+func (ec *executionContext) _LiverGroupConnetion_edges(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LiverGroupConnetion_edges(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -747,7 +747,7 @@ func (ec *executionContext) fieldContext_LiverGroupConnetion_edges(ctx context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _LiverGroupConnetion_pageInfo(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnetion) (ret graphql.Marshaler) {
+func (ec *executionContext) _LiverGroupConnetion_pageInfo(ctx context.Context, field graphql.CollectedField, obj *models.LiverGroupConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LiverGroupConnetion_pageInfo(ctx, field)
 	if err != nil {
 		return graphql.Null
@@ -1688,7 +1688,7 @@ func (ec *executionContext) _LiverEdge(ctx context.Context, sel ast.SelectionSet
 
 var liverGroupConnetionImplementors = []string{"LiverGroupConnetion"}
 
-func (ec *executionContext) _LiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, obj *models.LiverGroupConnetion) graphql.Marshaler {
+func (ec *executionContext) _LiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, obj *models.LiverGroupConnection) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, liverGroupConnetionImplementors)
 	out := graphql.NewFieldSet(fields)
 	var invalids uint32
@@ -2034,11 +2034,11 @@ func (ec *executionContext) marshalNLiverEdge2ᚖgithubᚗcomᚋaerealᚋenjoy�
 	return ec._LiverEdge(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNLiverGroupConnetion2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, v models.LiverGroupConnetion) graphql.Marshaler {
+func (ec *executionContext) marshalNLiverGroupConnetion2githubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnection(ctx context.Context, sel ast.SelectionSet, v models.LiverGroupConnection) graphql.Marshaler {
 	return ec._LiverGroupConnetion(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnetion(ctx context.Context, sel ast.SelectionSet, v *models.LiverGroupConnetion) graphql.Marshaler {
+func (ec *executionContext) marshalNLiverGroupConnetion2ᚖgithubᚗcomᚋaerealᚋenjoyᚑopentelemetryᚋgraphᚋmodelsᚐLiverGroupConnection(ctx context.Context, sel ast.SelectionSet, v *models.LiverGroupConnection) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")

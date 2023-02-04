@@ -15,7 +15,7 @@ import (
 )
 
 // Groups is the resolver for the groups field.
-func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error) {
+func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnection, error) {
 	var f int
 	if first != nil {
 		f = *first
@@ -43,7 +43,7 @@ func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *in
 			break
 		}
 	}
-	return &models.LiverGroupConnetion{
+	return &models.LiverGroupConnection{
 		Edges:   edges,
 		HasNext: len(groups) > f,
 	}, nil
@@ -67,7 +67,7 @@ func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*d
 }
 
 // PageInfo is the resolver for the pageInfo field.
-func (r *liverGroupConnetionResolver) PageInfo(ctx context.Context, obj *models.LiverGroupConnetion) (*models.PageInfo, error) {
+func (r *liverGroupConnetionResolver) PageInfo(ctx context.Context, obj *models.LiverGroupConnection) (*models.PageInfo, error) {
 	return models.NewPageInfo(obj.Edges, obj.HasNext)
 }
 

@@ -36,7 +36,7 @@ models:
       - github.com/aereal/enjoy-opentelemetry/graph/models.LiverGroupEdge
   LiverGroupConnetion:
     model:
-      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverGroupConnetion
+      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverGroupConnection
     fields:
       pageInfo:
         resolver: true

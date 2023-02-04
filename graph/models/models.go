@@ -85,7 +85,7 @@ func (g *LiverGroupEdge) Cursor() (*Cursor, error) {
 	return cursor, nil
 }
 
-type LiverGroupConnetion struct {
+type LiverGroupConnection struct {
 	Edges   []*LiverGroupEdge `json:"edges"`
 	HasNext bool
 }
