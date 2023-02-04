@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/aereal/enjoy-opentelemetry/domain"
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/models"
@@ -21,7 +22,7 @@ import (
 )
 
 // Groups is the resolver for the groups field.
-func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error) {
+func (r *liverResolver) Groups(ctx context.Context, obj *domain.Liver, first *int, after *models.Cursor) (*models.LiverGroupConnetion, error) {
 	var f int
 	if first != nil {
 		f = *first
@@ -56,7 +57,7 @@ func (r *liverResolver) Groups(ctx context.Context, obj *models.Liver, first *in
 }
 
 // Node is the resolver for the node field.
-func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*models.Liver, error) {
+func (r *liverEdgeResolver) Node(ctx context.Context, obj *models.LiverEdge) (*domain.Liver, error) {
 	return obj.Liver, nil
 }
 
@@ -87,7 +88,7 @@ func (r *mutationResolver) RegisterLiver(ctx context.Context, name string) (bool
 }
 
 // Liver is the resolver for the liver field.
-func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, error) {
+func (r *queryResolver) Liver(ctx context.Context, name string) (*domain.Liver, error) {
 	query, args, err := liversTable.
 		Where(
 			goqu.C("name").Eq(name),
@@ -97,7 +98,7 @@ func (r *queryResolver) Liver(ctx context.Context, name string) (*models.Liver, 
 	if err != nil {
 		return nil, err
 	}
-	var liver models.Liver
+	var liver domain.Liver
 	if err := r.dbx.GetContext(ctx, &liver, query, args...); err != nil {
 		return nil, fmt.Errorf("GetContext: %w", err)
 	}

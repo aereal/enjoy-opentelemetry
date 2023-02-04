@@ -18,7 +18,7 @@ skip_mod_tidy: true
 models:
   Liver:
     model:
-      - github.com/aereal/enjoy-opentelemetry/graph/models.Liver
+      - github.com/aereal/enjoy-opentelemetry/domain.Liver
   LiverEdge:
     model:
       - github.com/aereal/enjoy-opentelemetry/graph/models.LiverEdge
@@ -27,7 +27,7 @@ models:
       - github.com/aereal/enjoy-opentelemetry/graph/models.Scope
   LiverStatus:
     model:
-      - github.com/aereal/enjoy-opentelemetry/graph/models.LiverStatus
+      - github.com/aereal/enjoy-opentelemetry/domain.LiverStatus
   Group:
     model:
       - github.com/aereal/enjoy-opentelemetry/domain.Group
