@@ -2,6 +2,8 @@ directive @authenticate(scopes: [Scope!]) on FIELD_DEFINITION
 
 scalar Time
 
+scalar Cursor
+
 enum Scope {
   READ
   WRITE
@@ -13,24 +15,39 @@ enum LiverStatus {
   RETIRED
 }
 
+type Group {
+  name: String!
+}
+
+type LiverGroupEdge {
+  node: Group!
+  cursor: Cursor!
+}
+
+type LiverGroupConnetion {
+  edges: [LiverGroupEdge!]!
+  pageInfo: PageInfo!
+}
+
 type Liver {
   name: String!
   debuted_on: Time!
   retired_on: Time
   status: LiverStatus!
   enrollmentDays: Int!
+  groups(first: Int, after: Cursor): LiverGroupConnetion!
 }
 
 type PageInfo {
   hasPreviousPage: Boolean!
   hasNextPage: Boolean!
-  startCursor: String
-  endCursor: String
+  startCursor: Cursor
+  endCursor: Cursor
 }
 
 type LiverEdge {
   node: Liver!
-  cursor: String!
+  cursor: Cursor!
 }
 
 type LiverConnection {
@@ -56,7 +73,7 @@ type Query {
   liver(name: String!): Liver @authenticate(scopes: [READ])
   livers(
     first: Int = 0,
-    after: String,
+    after: Cursor,
     orderBy: LiverOrder
   ): LiverConnection! @authenticate(scopes: [READ])
 }
