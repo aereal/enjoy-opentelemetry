@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"strings"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -40,4 +41,43 @@ func FromContext(ctx context.Context) (context.Context, *zap.Logger) {
 
 func WithLogger(ctx context.Context, logger *zap.Logger) context.Context {
 	return context.WithValue(ctx, ctxKey, logger)
+}
+
+const (
+	appScope = "github.com/aereal/enjoy-gqlgen"
+	gqlScope = "github.com/99designs/gqlgen/graphql"
+)
+
+func AppKey(name string, names ...string) string {
+	return Key(appScope, name, names...)
+}
+func GraphQLKey(name string, names ...string) string {
+	return Key(gqlScope, name, names...)
+}
+
+func Key(scope string, name string, names ...string) string {
+	b := new(strings.Builder)
+	b.WriteString(scope)
+	switch numNames := len(names); numNames {
+	case 0:
+		b.WriteByte('.')
+		b.WriteString(name)
+	case 1:
+		b.WriteByte('/')
+		b.WriteString(name)
+		b.WriteByte('.')
+		b.WriteString(names[0])
+	default:
+		b.WriteByte('/')
+		b.WriteString(name)
+		for i, n := range names {
+			var delimtier byte = '/'
+			if i == numNames-1 {
+				delimtier = '.'
+			}
+			b.WriteByte(delimtier)
+			b.WriteString(n)
+		}
+	}
+	return b.String()
 }
