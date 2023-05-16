@@ -15,6 +15,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph"
 	"github.com/aereal/enjoy-opentelemetry/graph/cache"
 	"github.com/aereal/enjoy-opentelemetry/graph/directives"
+	"github.com/aereal/enjoy-opentelemetry/graph/extensions"
 	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
@@ -64,6 +65,7 @@ func (a *App) handleGraphql() http.Handler {
 	srv.Use(extension.Introspection{})
 	srv.Use(otelgqlgen.New(otelgqlgen.WithTracerProvider(a.tp)))
 	srv.Use(a.loaderAggregate)
+	srv.Use(extensions.NewDeprecationNoticer())
 	return srv
 }
 
