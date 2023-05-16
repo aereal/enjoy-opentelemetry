@@ -19,6 +19,8 @@ exporters:
     endpoint: '${ZIPKIN_ORIGIN}/api/v2/spans'
     tls:
       insecure: true
+  prometheus:
+    endpoint: '0.0.0.0:9999'
 service:
   pipelines:
     traces:
@@ -29,3 +31,10 @@ service:
       exporters:
         - datadog
         - zipkin
+    metrics:
+      receivers:
+        - otlp
+      processors:
+        - batch
+      exporters:
+        - prometheus
