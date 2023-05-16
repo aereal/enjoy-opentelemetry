@@ -18,8 +18,8 @@ type LiverOrder struct {
 type PageInfo struct {
 	HasPreviousPage bool    `json:"hasPreviousPage"`
 	HasNextPage     bool    `json:"hasNextPage"`
-	StartCursor     *Cursor `json:"startCursor"`
-	EndCursor       *Cursor `json:"endCursor"`
+	StartCursor     *Cursor `json:"startCursor,omitempty"`
+	EndCursor       *Cursor `json:"endCursor,omitempty"`
 }
 
 type LiverOrderField string
