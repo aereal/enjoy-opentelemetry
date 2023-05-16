@@ -8,7 +8,7 @@ import (
 
 	"github.com/aereal/enjoy-opentelemetry/adapters/db"
 	"github.com/aereal/enjoy-opentelemetry/log"
-	"github.com/aereal/enjoy-opentelemetry/tracing"
+	"github.com/aereal/enjoy-opentelemetry/observability"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	"github.com/jmoiron/sqlx"
@@ -272,23 +272,23 @@ const (
 )
 
 func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, func(context.Context), error) {
-	opts := []tracing.Option{
-		tracing.WithHTTPExporter(),
-		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName(serviceName),
+	opts := []observability.Option{
+		observability.WithHTTPExporter(),
+		observability.WithDeploymentEnvironment(deploymentEnv),
+		observability.WithResourceName(serviceName),
 	}
-	tp, err := tracing.Setup(ctx, opts...)
+	aggr, err := observability.Setup(ctx, opts...)
 	if err != nil {
 		return nil, noop, fmt.Errorf("tracing.Setup: %w", err)
 	}
-	otel.SetTracerProvider(tp)
+	otel.SetTracerProvider(aggr.TracerProvider)
 	cleanup := func(ctx context.Context) {
-		if err := tp.Shutdown(ctx); err != nil {
+		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
 			_, logger := log.FromContext(ctx)
 			logger.Info("failed to cleanup otel trace provider", zap.Error(err))
 		}
 	}
-	return tp, cleanup, nil
+	return aggr.TracerProvider, cleanup, nil
 }
 
 func main() {

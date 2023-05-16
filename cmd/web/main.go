@@ -21,6 +21,7 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/graph/loaders"
 	"github.com/aereal/enjoy-opentelemetry/graph/resolvers"
 	"github.com/aereal/enjoy-opentelemetry/log"
+	"github.com/aereal/enjoy-opentelemetry/observability"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/aereal/enjoy-opentelemetry/upstream"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -208,23 +209,23 @@ func graceful(ctx context.Context, servers ...*server) {
 var noop = func(context.Context) {}
 
 func setupTracerProvider(ctx context.Context, component string) (*sdktrace.TracerProvider, func(context.Context), error) {
-	opts := []tracing.Option{
-		tracing.WithHTTPExporter(),
-		tracing.WithDeploymentEnvironment(deploymentEnv),
-		tracing.WithResourceName(fmt.Sprintf("%s-%s", serviceName, component)),
+	opts := []observability.Option{
+		observability.WithHTTPExporter(),
+		observability.WithDeploymentEnvironment(deploymentEnv),
+		observability.WithResourceName(fmt.Sprintf("%s-%s", serviceName, component)),
 	}
 	if debug {
-		opts = append(opts, tracing.WithDebugExporter(os.Stderr))
+		opts = append(opts, observability.WithDebugExporter(os.Stderr))
 	}
-	tp, err := tracing.Setup(ctx, opts...)
+	aggr, err := observability.Setup(ctx, opts...)
 	if err != nil {
 		return nil, noop, fmt.Errorf("%s: tracing.Setup: %w", component, err)
 	}
 	cleanup := func(ctx context.Context) {
-		if err := tp.Shutdown(ctx); err != nil {
+		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
 			_, logger := log.FromContext(ctx)
 			logger.Info("failed to cleanup otel trace provider", zap.String("server", component), zap.Error(err))
 		}
 	}
-	return tp, cleanup, nil
+	return aggr.TracerProvider, cleanup, nil
 }
