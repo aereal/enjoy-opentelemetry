@@ -19,7 +19,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 )
 
@@ -46,7 +45,7 @@ func run() error {
 	flag.Parse()
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(xray.Propagator{}))
 	setupCtx, logger := log.FromContext(context.Background())
-	upstreamTracerProvider, cleanupUpstream, err := setupTracerProvider(setupCtx, "upstream")
+	upstreamAggr, cleanupUpstream, err := setupObservability(setupCtx, "upstream")
 	if err != nil {
 		return err
 	}
@@ -57,7 +56,7 @@ func run() error {
 	}()
 	rt := otelhttp.NewTransport(
 		&tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport},
-		otelhttp.WithTracerProvider(upstreamTracerProvider),
+		otelhttp.WithTracerProvider(upstreamAggr.TracerProvider),
 	)
 	logger.Info(
 		"start server",
@@ -67,7 +66,8 @@ func run() error {
 		zap.String("port", upstreamPort),
 		zap.Bool("debug", debug))
 	upstreamApp, err := upstream.New(
-		upstreamTracerProvider,
+		upstreamAggr.TracerProvider,
+		upstreamAggr.MetricProvider,
 		&http.Client{Transport: rt},
 		downstreamOrigin,
 	)
@@ -115,7 +115,7 @@ func graceful(ctx context.Context, srv *http.Server) {
 
 var noop = func(context.Context) {}
 
-func setupTracerProvider(ctx context.Context, component string) (*sdktrace.TracerProvider, func(context.Context), error) {
+func setupObservability(ctx context.Context, component string) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
 		observability.WithHTTPExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
@@ -129,10 +129,13 @@ func setupTracerProvider(ctx context.Context, component string) (*sdktrace.Trace
 		return nil, noop, fmt.Errorf("%s: tracing.Setup: %w", component, err)
 	}
 	cleanup := func(ctx context.Context) {
+		_, logger := log.FromContext(ctx)
 		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
-			_, logger := log.FromContext(ctx)
 			logger.Error("failed to cleanup otel trace provider", zap.String("component", component), zap.Error(err))
 		}
+		if err := aggr.MetricProvider.Shutdown(ctx); err != nil {
+			logger.Error("failed to cleanup otel metric provider", zap.String("component", component), zap.Error(err))
+		}
 	}
-	return aggr.TracerProvider, cleanup, nil
+	return aggr, cleanup, nil
 }

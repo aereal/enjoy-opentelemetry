@@ -30,7 +30,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
@@ -58,11 +57,11 @@ func run() error {
 	flag.Parse()
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, xray.Propagator{}))
 	setupCtx := context.Background()
-	upstreamTracerProvider, cleanupUpstream, err := setupTracerProvider(setupCtx, "upstream")
+	upstreamAggr, cleanupUpstream, err := setupObservability(setupCtx, "upstream")
 	if err != nil {
 		return err
 	}
-	downstreamTracerProvider, cleanupDownstream, err := setupTracerProvider(setupCtx, "downstream")
+	downstreamAggr, cleanupDownstream, err := setupObservability(setupCtx, "downstream")
 	if err != nil {
 		return err
 	}
@@ -72,13 +71,13 @@ func run() error {
 		defer cleanupDownstream(ctx)
 		defer cleanupUpstream(ctx)
 	}()
-	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downstreamTracerProvider))
+	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downstreamAggr.TracerProvider), db.WithMetricProvider(downstreamAggr.MetricProvider))
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}
 	newRepositoryOptions := []domain.NewRepositoryOption{
 		domain.WithDB(dbx),
-		domain.WithTracerProvider(downstreamTracerProvider),
+		domain.WithTracerProvider(downstreamAggr.TracerProvider),
 	}
 	liverGroupRepository, err := domain.NewLiverGroupRepository(newRepositoryOptions...)
 	if err != nil {
@@ -94,34 +93,34 @@ func run() error {
 	}
 	baseTransport := &tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport}
 	upstreamHTTPClient := &http.Client{
-		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(upstreamTracerProvider)),
+		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(upstreamAggr.TracerProvider)),
 	}
 	downstreamHTTPClient := &http.Client{
-		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(downstreamTracerProvider)),
+		Transport: otelhttp.NewTransport(baseTransport, otelhttp.WithTracerProvider(downstreamAggr.TracerProvider)),
 	}
 	kp, err := oidcconfig.NewKeyProvider(
 		oidcconfig.WithHTTPClient(downstreamHTTPClient),
 		oidcconfig.WithIssuer(os.Getenv("AUTH0_ISSUER")),
-		oidcconfig.WithTracerProvider(downstreamTracerProvider),
+		oidcconfig.WithTracerProvider(downstreamAggr.TracerProvider),
 	)
 	if err != nil {
 		return err
 	}
 	mw := authz.New(
-		authz.WithTracerProvider(downstreamTracerProvider),
+		authz.WithTracerProvider(downstreamAggr.TracerProvider),
 		authz.WithTokenExtractor(authz.ExtractFromAuthorizationHeader()),
 		authz.WithVerifyOptions(jws.WithKeyProvider(kp)),
 		authz.WithValidateOptions(jwt.WithAudience(os.Getenv("AUTH0_AUDIENCE"))),
 	)
-	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
+	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamAggr.TracerProvider))
 	if err != nil {
 		return err
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, mw, loaderAggregate)
+	downstreamApp, err := downstream.New(downstreamAggr.TracerProvider, downstreamAggr.MetricProvider, rootResolver, mw, loaderAggregate)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
-	upstreamApp, err := upstream.New(upstreamTracerProvider, upstreamHTTPClient, fmt.Sprintf("http://localhost:%d", downstreamPort))
+	upstreamApp, err := upstream.New(upstreamAggr.TracerProvider, upstreamAggr.MetricProvider, upstreamHTTPClient, fmt.Sprintf("http://localhost:%d", downstreamPort))
 	if err != nil {
 		return fmt.Errorf("upstream.New: %w", err)
 	}
@@ -208,7 +207,7 @@ func graceful(ctx context.Context, servers ...*server) {
 
 var noop = func(context.Context) {}
 
-func setupTracerProvider(ctx context.Context, component string) (*sdktrace.TracerProvider, func(context.Context), error) {
+func setupObservability(ctx context.Context, component string) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
 		observability.WithHTTPExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
@@ -222,10 +221,13 @@ func setupTracerProvider(ctx context.Context, component string) (*sdktrace.Trace
 		return nil, noop, fmt.Errorf("%s: tracing.Setup: %w", component, err)
 	}
 	cleanup := func(ctx context.Context) {
+		_, logger := log.FromContext(ctx)
 		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
-			_, logger := log.FromContext(ctx)
 			logger.Info("failed to cleanup otel trace provider", zap.String("server", component), zap.Error(err))
 		}
+		if err := aggr.MetricProvider.Shutdown(ctx); err != nil {
+			logger.Info("failed to cleanup otel metric provider", zap.String("server", component), zap.Error(err))
+		}
 	}
-	return aggr.TracerProvider, cleanup, nil
+	return aggr, cleanup, nil
 }

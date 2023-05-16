@@ -17,7 +17,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -256,7 +255,7 @@ func doMain() error {
 		cleanup(setupCtx)
 	}()
 
-	a := newApp(tp)
+	a := newApp(tp.TracerProvider)
 	if err := a.run(context.Background()); err != nil {
 		return err
 	}
@@ -271,7 +270,7 @@ const (
 	serviceName   = "import-liver-groups"
 )
 
-func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, func(context.Context), error) {
+func setupTracerProvider(ctx context.Context) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
 		observability.WithHTTPExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
@@ -283,12 +282,15 @@ func setupTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, func(co
 	}
 	otel.SetTracerProvider(aggr.TracerProvider)
 	cleanup := func(ctx context.Context) {
+		_, logger := log.FromContext(ctx)
 		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
-			_, logger := log.FromContext(ctx)
 			logger.Info("failed to cleanup otel trace provider", zap.Error(err))
 		}
+		if err := aggr.MetricProvider.Shutdown(ctx); err != nil {
+			logger.Info("failed to cleanup otel meteric provider", zap.Error(err))
+		}
 	}
-	return aggr.TracerProvider, cleanup, nil
+	return aggr, cleanup, nil
 }
 
 func main() {

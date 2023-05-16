@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/aws/xray"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 )
 
@@ -52,7 +51,7 @@ func run() error {
 	flag.Parse()
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(xray.Propagator{}))
 	setupCtx, logger := log.FromContext(context.Background())
-	downstreamTracerProvider, cleanupDownstream, err := setupTracerProvider(setupCtx, "downstream")
+	downAggr, cleanupDownstream, err := setupObservability(setupCtx, "downstream")
 	if err != nil {
 		return err
 	}
@@ -68,13 +67,13 @@ func run() error {
 		zap.String("service", serviceName),
 		zap.String("port", downstreamPort),
 		zap.Bool("debug", debug))
-	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downstreamTracerProvider))
+	dbx, err := db.New(os.Getenv("DSN"), db.WithTracerProvider(downAggr.TracerProvider), db.WithMetricProvider(downAggr.MetricProvider))
 	if err != nil {
 		return fmt.Errorf("db.New: %w", err)
 	}
 	newRepositoryOptions := []domain.NewRepositoryOption{
 		domain.WithDB(dbx),
-		domain.WithTracerProvider(downstreamTracerProvider),
+		domain.WithTracerProvider(downAggr.TracerProvider),
 	}
 	liverGroupRepository, err := domain.NewLiverGroupRepository(newRepositoryOptions...)
 	if err != nil {
@@ -90,28 +89,28 @@ func run() error {
 	}
 	rt := otelhttp.NewTransport(
 		&tracing.ResourceOverriderRoundTripper{Base: http.DefaultTransport},
-		otelhttp.WithTracerProvider(downstreamTracerProvider),
+		otelhttp.WithTracerProvider(downAggr.TracerProvider),
 	)
 	httpClient := &http.Client{Transport: rt}
 	kp, err := oidcconfig.NewKeyProvider(
 		oidcconfig.WithHTTPClient(httpClient),
 		oidcconfig.WithIssuer(os.Getenv("AUTH0_ISSUER")),
-		oidcconfig.WithTracerProvider(downstreamTracerProvider),
+		oidcconfig.WithTracerProvider(downAggr.TracerProvider),
 	)
 	if err != nil {
 		return err
 	}
 	mw := authz.New(
-		authz.WithTracerProvider(downstreamTracerProvider),
+		authz.WithTracerProvider(downAggr.TracerProvider),
 		authz.WithTokenExtractor(authz.ExtractFromAuthorizationHeader()),
 		authz.WithVerifyOptions(jws.WithKeyProvider(kp)),
 		authz.WithValidateOptions(jwt.WithAudience(os.Getenv("AUTH0_AUDIENCE"))),
 	)
-	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
+	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downAggr.TracerProvider))
 	if err != nil {
 		return err
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, mw, loaderAggregate)
+	downstreamApp, err := downstream.New(downAggr.TracerProvider, downAggr.MetricProvider, rootResolver, mw, loaderAggregate)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}
@@ -156,7 +155,7 @@ func graceful(ctx context.Context, srv *http.Server) {
 
 var noop = func(context.Context) {}
 
-func setupTracerProvider(ctx context.Context, component string) (*sdktrace.TracerProvider, func(context.Context), error) {
+func setupObservability(ctx context.Context, component string) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
 		observability.WithHTTPExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
@@ -170,10 +169,13 @@ func setupTracerProvider(ctx context.Context, component string) (*sdktrace.Trace
 		return nil, noop, fmt.Errorf("%s: tracing.Setup: %w", component, err)
 	}
 	cleanup := func(ctx context.Context) {
+		_, logger := log.FromContext(ctx)
 		if err := aggr.TracerProvider.Shutdown(ctx); err != nil {
-			_, logger := log.FromContext(ctx)
 			logger.Error("failed to cleanup otel trace provider", zap.String("component", component), zap.Error(err))
 		}
+		if err := aggr.MetricProvider.Shutdown(ctx); err != nil {
+			logger.Error("failed to cleanup otel metric provider", zap.String("component", component), zap.Error(err))
+		}
 	}
-	return aggr.TracerProvider, cleanup, nil
+	return aggr, cleanup, nil
 }

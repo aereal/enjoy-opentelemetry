@@ -22,16 +22,18 @@ import (
 	otelgqlgen "github.com/aereal/otelgqlgen"
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/rs/cors"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
-func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, authenticator *authz.Middleware, loaderAggregate *loaders.Aggregate) (*App, error) {
+func New(tp trace.TracerProvider, mp metric.MeterProvider, rootResolver *resolvers.Resolver, authenticator *authz.Middleware, loaderAggregate *loaders.Aggregate) (*App, error) {
 	if rootResolver == nil {
 		return nil, errors.New("rootResolver is nil")
 	}
 	tracer := tp.Tracer("downstream")
 	return &App{
 		tp:              tp,
+		mp:              mp,
 		tracer:          tracer,
 		resolver:        rootResolver,
 		authenticator:   authenticator,
@@ -41,6 +43,7 @@ func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, authenticato
 
 type App struct {
 	tp              trace.TracerProvider
+	mp              metric.MeterProvider
 	tracer          trace.Tracer
 	resolver        *resolvers.Resolver
 	authenticator   *authz.Middleware
@@ -93,7 +96,7 @@ func (app *App) Handler() http.Handler {
 	router.OptionsHandler = func(w http.ResponseWriter, r *http.Request, m map[string]string) {
 		corsMW.ServeHTTP(w, r, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	}
-	router.UseHandler(tracing.Middleware(app.tp))
+	router.UseHandler(tracing.Middleware(app.tp, app.mp))
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
 	router.Handler(http.MethodPost, "/graphql", corsMW.Handler(app.authenticator.Authenticate(app.handleGraphql())))

@@ -8,6 +8,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -24,7 +25,7 @@ var (
 	attrResourceName = attribute.Key("resource.name")
 )
 
-func Middleware(tp trace.TracerProvider) func(http.Handler) http.Handler {
+func Middleware(tp trace.TracerProvider, mp metric.MeterProvider) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/-/health" {
@@ -33,6 +34,7 @@ func Middleware(tp trace.TracerProvider) func(http.Handler) http.Handler {
 			}
 			opts := []otelhttp.Option{
 				otelhttp.WithTracerProvider(tp),
+				otelhttp.WithMeterProvider(mp),
 			}
 			opName := "unknown"
 			if routeData := httptreemux.ContextData(r.Context()); routeData != nil {

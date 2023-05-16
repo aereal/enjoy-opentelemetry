@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -16,6 +19,7 @@ import (
 type config struct {
 	ctx                  context.Context
 	traceProviderOptions []sdktrace.TracerProviderOption
+	metricReader         metric.Reader
 	resourceAttributes   []attribute.KeyValue
 }
 
@@ -57,12 +61,18 @@ func WithHTTPExporter() Option {
 			return fmt.Errorf("otlptracehttp.New: %w", err)
 		}
 		c.traceProviderOptions = append(c.traceProviderOptions, sdktrace.WithBatcher(httpExporter))
+		metricExporter, err := otlpmetrichttp.New(c.ctx, otlpmetrichttp.WithInsecure())
+		if err != nil {
+			return fmt.Errorf("otlpmetrichttp.New: %w", err)
+		}
+		c.metricReader = metric.NewPeriodicReader(metricExporter, metric.WithInterval(time.Second*10))
 		return nil
 	}
 }
 
 type Aggregate struct {
 	TracerProvider *sdktrace.TracerProvider
+	MetricProvider *metric.MeterProvider
 }
 
 func Setup(ctx context.Context, opts ...Option) (*Aggregate, error) {
@@ -78,8 +88,15 @@ func Setup(ctx context.Context, opts ...Option) (*Aggregate, error) {
 		return nil, fmt.Errorf("prepareResource: %w", err)
 	}
 	cfg.traceProviderOptions = append(cfg.traceProviderOptions, sdktrace.WithResource(res))
+	if cfg.metricReader == nil {
+		cfg.metricReader = metric.NewManualReader()
+	}
 	aggr := &Aggregate{
 		TracerProvider: sdktrace.NewTracerProvider(cfg.traceProviderOptions...),
+		MetricProvider: metric.NewMeterProvider(
+			metric.WithResource(res),
+			metric.WithReader(cfg.metricReader),
+		),
 	}
 	return aggr, nil
 }

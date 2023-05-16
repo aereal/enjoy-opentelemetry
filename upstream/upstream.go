@@ -11,11 +11,12 @@ import (
 	"github.com/aereal/enjoy-opentelemetry/log"
 	"github.com/aereal/enjoy-opentelemetry/tracing"
 	"github.com/dimfeld/httptreemux/v5"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
-func New(tp trace.TracerProvider, client *http.Client, downstreamOrigin string) (*App, error) {
+func New(tp trace.TracerProvider, mp metric.MeterProvider, client *http.Client, downstreamOrigin string) (*App, error) {
 	if client == nil {
 		return nil, fmt.Errorf("client is nil")
 	}
@@ -26,11 +27,12 @@ func New(tp trace.TracerProvider, client *http.Client, downstreamOrigin string) 
 	if err != nil {
 		return nil, fmt.Errorf("url.Parse: %w", err)
 	}
-	return &App{tp: tp, client: client, downstreamOrigin: parsed}, nil
+	return &App{tp: tp, mp: mp, client: client, downstreamOrigin: parsed}, nil
 }
 
 type App struct {
 	tp               trace.TracerProvider
+	mp               metric.MeterProvider
 	client           *http.Client
 	downstreamOrigin *url.URL
 }
@@ -125,7 +127,7 @@ func respondError(w http.ResponseWriter, status int, msg string) {
 
 func (app *App) Handler() http.Handler {
 	mux := httptreemux.NewContextMux()
-	mux.UseHandler(tracing.Middleware(app.tp))
+	mux.UseHandler(tracing.Middleware(app.tp, app.mp))
 	mux.Handler(http.MethodGet, "/", app.handleRoot())
 	mux.Handler(http.MethodGet, "/proxy", app.handleProxy())
 	mux.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
