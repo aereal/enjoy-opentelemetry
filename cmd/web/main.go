@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -113,20 +112,11 @@ func run() error {
 		authz.WithVerifyOptions(jws.WithKeyProvider(kp)),
 		authz.WithValidateOptions(jwt.WithAudience(os.Getenv("AUTH0_AUDIENCE"))),
 	)
-	f, err := os.Open("./oauth2-client-config.json")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	var authConfig oauth2.Config
-	if err := json.NewDecoder(f).Decode(&authConfig); err != nil {
-		return err
-	}
 	loaderAggregate, err := loaders.NewAggregate(liverGroupRepository, loaders.WithTracerProvider(downstreamTracerProvider))
 	if err != nil {
 		return err
 	}
-	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, "https://aereal.org/#enjoy-opentelemetry-graphql", mw, &authConfig, loaderAggregate)
+	downstreamApp, err := downstream.New(downstreamTracerProvider, rootResolver, mw, loaderAggregate)
 	if err != nil {
 		return fmt.Errorf("downstream.New: %w", err)
 	}

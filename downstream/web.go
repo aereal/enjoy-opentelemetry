@@ -22,10 +22,9 @@ import (
 	"github.com/dimfeld/httptreemux/v5"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/oauth2"
 )
 
-func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, audience string, authenticator *authz.Middleware, authConfig *oauth2.Config, loaderAggregate *loaders.Aggregate) (*App, error) {
+func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, authenticator *authz.Middleware, loaderAggregate *loaders.Aggregate) (*App, error) {
 	if rootResolver == nil {
 		return nil, errors.New("rootResolver is nil")
 	}
@@ -34,9 +33,7 @@ func New(tp trace.TracerProvider, rootResolver *resolvers.Resolver, audience str
 		tp:              tp,
 		tracer:          tracer,
 		resolver:        rootResolver,
-		audience:        audience,
 		authenticator:   authenticator,
-		authConfig:      authConfig,
 		loaderAggregate: loaderAggregate,
 	}, nil
 }
@@ -45,9 +42,7 @@ type App struct {
 	tp              trace.TracerProvider
 	tracer          trace.Tracer
 	resolver        *resolvers.Resolver
-	audience        string
 	authenticator   *authz.Middleware
-	authConfig      *oauth2.Config
 	loaderAggregate *loaders.Aggregate
 }
 
@@ -76,24 +71,6 @@ func (*App) handleRoot() http.Handler {
 	return playground.Handler("GraphQL playground", "/graphql")
 }
 
-func (app *App) handleSignIn() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		url := app.authConfig.AuthCodeURL("0xdeadbeaf", oauth2.SetAuthURLParam("audience", app.audience))
-		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-	})
-}
-
-func (app *App) handleCallback() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := app.authConfig.Exchange(r.Context(), r.URL.Query().Get("code"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		http.Redirect(w, r, "/?token="+token.AccessToken, http.StatusTemporaryRedirect)
-	})
-}
-
 type Router interface {
 	Handler(method, path string, handler http.Handler)
 }
@@ -117,8 +94,6 @@ func (app *App) Handler() http.Handler {
 	router.UseHandler(tracing.Middleware(app.tp))
 	router.Handler(http.MethodGet, "/", app.handleRoot())
 	router.Handler(http.MethodGet, "/-/health", app.handleHealthCheck())
-	router.Handler(http.MethodGet, "/signin", app.handleSignIn())
-	router.Handler(http.MethodGet, "/auth/callback", app.handleCallback())
 	router.Handler(http.MethodPost, "/graphql", corsMW.Handler(app.authenticator.Authenticate(app.handleGraphql())))
 	return router
 }
