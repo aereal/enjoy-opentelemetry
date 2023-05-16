@@ -28,3 +28,9 @@ services:
       - './collector.yml:/etc/otelcol-contrib/config.yaml'
     environment:
       ZIPKIN_ORIGIN: 'http://zipkin:9411'
+  prometheus:
+    image: 'quay.io/prometheus/prometheus:v2.44.0'
+    volumes:
+      - './prometheus.yml:/etc/prometheus/prometheus.yml'
+    ports:
+      - '9090:9090'
