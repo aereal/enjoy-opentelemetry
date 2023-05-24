@@ -54,6 +54,9 @@ func New(opts ...Option) graph.DirectiveRoot {
 			}
 			span.End()
 		}()
+		if path := graphql.GetPath(ctx); path != nil {
+			span.SetAttributes(attribute.Stringer("graphql.path", path))
+		}
 		token := authz.AuthenticatedToken(ctx)
 		if token == nil {
 			return nil, ErrUnauthenticated
