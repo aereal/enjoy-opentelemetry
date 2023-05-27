@@ -78,6 +78,7 @@ func run() error {
 	newRepositoryOptions := []domain.NewRepositoryOption{
 		domain.WithDB(dbx),
 		domain.WithTracerProvider(downstreamAggr.TracerProvider),
+		domain.WithMetricProvider(downstreamAggr.MetricProvider),
 	}
 	liverGroupRepository, err := domain.NewLiverGroupRepository(newRepositoryOptions...)
 	if err != nil {

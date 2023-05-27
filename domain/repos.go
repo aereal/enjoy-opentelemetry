@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/aereal/enjoy-opentelemetry/observability"
 	"github.com/doug-martin/goqu/v9"
 	_ "github.com/doug-martin/goqu/v9/dialect/mysql"
 	"github.com/doug-martin/goqu/v9/exp"
@@ -12,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -24,6 +26,7 @@ var (
 
 type newRepositoryConfig struct {
 	tp trace.TracerProvider
+	mp metric.MeterProvider
 	db *sqlx.DB
 }
 
@@ -31,11 +34,16 @@ var _ newRepositoryOptioner = (*newRepositoryConfig)(nil)
 
 type newRepositoryOptioner interface {
 	setTracerProvider(trace.TracerProvider)
+	setMeterProvider(metric.MeterProvider)
 	setDB(db *sqlx.DB)
 }
 
 func (c *newRepositoryConfig) setTracerProvider(tp trace.TracerProvider) {
 	c.tp = tp
+}
+
+func (c *newRepositoryConfig) setMeterProvider(mp metric.MeterProvider) {
+	c.mp = mp
 }
 
 func (c *newRepositoryConfig) setDB(db *sqlx.DB) {
@@ -56,6 +64,12 @@ func WithTracerProvider(tp trace.TracerProvider) NewRepositoryOption {
 	}
 }
 
+func WithMetricProvider(mp metric.MeterProvider) NewRepositoryOption {
+	return func(c newRepositoryOptioner) {
+		c.setMeterProvider(mp)
+	}
+}
+
 func NewLiverGroupRepository(opts ...NewRepositoryOption) (*LiverGroupRepository, error) {
 	cfg := &newRepositoryConfig{}
 	for _, o := range opts {
@@ -67,21 +81,33 @@ func NewLiverGroupRepository(opts ...NewRepositoryOption) (*LiverGroupRepository
 	if cfg.db == nil {
 		return nil, ErrDBIsNil
 	}
+	if cfg.mp == nil {
+		cfg.mp = otel.GetMeterProvider()
+	}
 	r := &LiverGroupRepository{
 		tracer: cfg.tp.Tracer("domain.LiverGroupRepository"),
 		db:     cfg.db,
+		meter:  cfg.mp.Meter("domain.LiverGroupRepository"),
 	}
 	r.tables.livers = goqu.T("livers")
 	r.tables.liverGroups = goqu.T("liver_groups")
 	r.tables.liverGroupMembers = goqu.T("liver_group_members")
+	var err error
+	if r.measurements.fetchedResultCount, err = r.meter.Int64Counter(observability.MetricNames.RepositoryFetchedResultCount); err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
 type LiverGroupRepository struct {
 	tracer trace.Tracer
+	meter  metric.Meter
 	db     *sqlx.DB
 	tables struct {
 		livers, liverGroups, liverGroupMembers exp.IdentifierExpression
+	}
+	measurements struct {
+		fetchedResultCount metric.Int64Counter
 	}
 }
 
@@ -126,6 +152,10 @@ func (r *LiverGroupRepository) GetBelongingGroupsByLivers(ctx context.Context, l
 		return nil, err
 	}
 	span.SetAttributes(attribute.Int("count", len(groups)))
+	r.measurements.fetchedResultCount.Add(
+		ctx,
+		int64(len(groups)),
+		metric.WithAttributes(observability.AttrDBTable(r.tables.liverGroups.GetTable())))
 	return groups, nil
 }
 
@@ -168,14 +198,23 @@ func (r *LiverGroupRepository) GetBelongingGruopsByLiver(ctx context.Context, li
 		return nil, err
 	}
 	span.SetAttributes(attribute.Int("count", len(groups)))
+	r.measurements.fetchedResultCount.Add(
+		ctx,
+		int64(len(groups)),
+		metric.WithAttributes(observability.AttrDBTable(r.tables.liverGroups.GetTable())))
 	return groups, nil
 }
 
 type LiverRepository struct {
 	tracer trace.Tracer
+	meter  metric.Meter
 	db     *sqlx.DB
 	tables struct {
 		livers exp.IdentifierExpression
+	}
+	measurements struct {
+		fetchedResultCount metric.Int64Counter
+		insertedCount      metric.Int64Counter
 	}
 }
 
@@ -190,11 +229,22 @@ func NewLiverRepository(opts ...NewRepositoryOption) (*LiverRepository, error) {
 	if cfg.tp == nil {
 		cfg.tp = otel.GetTracerProvider()
 	}
+	if cfg.mp == nil {
+		cfg.mp = otel.GetMeterProvider()
+	}
 	r := &LiverRepository{
 		db:     cfg.db,
 		tracer: cfg.tp.Tracer("domain.LiverRepository"),
+		meter:  cfg.mp.Meter("domain.LiverRepository"),
 	}
 	r.tables.livers = goqu.T("livers")
+	var err error
+	if r.measurements.fetchedResultCount, err = r.meter.Int64Counter(observability.MetricNames.RepositoryFetchedResultCount); err != nil {
+		return nil, err
+	}
+	if r.measurements.insertedCount, err = r.meter.Int64Counter(observability.MetricNames.RepositoryInsertedCount); err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
@@ -223,8 +273,12 @@ func (r *LiverRepository) RegisterLiver(ctx context.Context, name string) (err e
 	if err != nil {
 		return err
 	}
-	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+	rows, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
 		return err
+	}
+	if affected, err := rows.RowsAffected(); err == nil {
+		r.measurements.insertedCount.Add(ctx, affected)
 	}
 	return nil
 }
@@ -257,6 +311,7 @@ func (r *LiverRepository) GetLiverByName(ctx context.Context, name string) (_ *L
 	if err := r.db.GetContext(ctx, &liver, query, args...); err != nil {
 		return nil, err
 	}
+	r.measurements.fetchedResultCount.Add(ctx, 1, metric.WithAttributes(observability.AttrDBTable(r.tables.livers.GetTable())))
 	return &liver, nil
 }
 
@@ -321,6 +376,7 @@ func (r *LiverRepository) GetLivers(ctx context.Context, limit uint, opts ...Get
 	if err := r.db.SelectContext(ctx, &livers, query, args...); err != nil {
 		return nil, false, err
 	}
+	r.measurements.fetchedResultCount.Add(ctx, int64(len(livers)), metric.WithAttributes(observability.AttrDBTable(r.tables.livers.GetTable())))
 	if len(livers) > int(limit) {
 		livers = livers[:limit]
 		hasNext = true
