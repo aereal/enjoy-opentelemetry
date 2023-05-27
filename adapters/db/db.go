@@ -9,7 +9,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -49,7 +48,7 @@ func New(dsn string, opts ...Option) (*sqlx.DB, error) {
 		cfg.tp = otel.GetTracerProvider()
 	}
 	if cfg.mp == nil {
-		cfg.mp = global.MeterProvider()
+		cfg.mp = otel.GetMeterProvider()
 	}
 
 	dbCfg, err := mysql.ParseDSN(dsn)
