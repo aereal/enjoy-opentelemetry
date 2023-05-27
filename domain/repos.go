@@ -20,7 +20,6 @@ var (
 
 	keyLiverName = attribute.Key("liver.name")
 	dialect      = goqu.Dialect("mysql")
-	liversTable  = dialect.From("livers")
 )
 
 type newRepositoryConfig struct {
@@ -68,15 +67,22 @@ func NewLiverGroupRepository(opts ...NewRepositoryOption) (*LiverGroupRepository
 	if cfg.db == nil {
 		return nil, ErrDBIsNil
 	}
-	return &LiverGroupRepository{
+	r := &LiverGroupRepository{
 		tracer: cfg.tp.Tracer("domain.LiverGroupRepository"),
 		db:     cfg.db,
-	}, nil
+	}
+	r.tables.livers = goqu.T("livers")
+	r.tables.liverGroups = goqu.T("liver_groups")
+	r.tables.liverGroupMembers = goqu.T("liver_group_members")
+	return r, nil
 }
 
 type LiverGroupRepository struct {
 	tracer trace.Tracer
 	db     *sqlx.DB
+	tables struct {
+		livers, liverGroups, liverGroupMembers exp.IdentifierExpression
+	}
 }
 
 func (r *LiverGroupRepository) GetBelongingGroupsByLivers(ctx context.Context, liverIDs []uint64) (_ []*LiverBelongingGroup, err error) {
@@ -102,15 +108,15 @@ func (r *LiverGroupRepository) GetBelongingGroupsByLivers(ctx context.Context, l
 	)
 
 	var groups []*LiverBelongingGroup
-	query, args, err := dialect.From("liver_groups").
-		Select("liver_groups.*", "liver_group_members.liver_id").
+	query, args, err := dialect.From(r.tables.liverGroups).
+		Select(r.tables.liverGroups.All(), r.tables.liverGroupMembers.Col("liver_id")).
 		InnerJoin(
-			goqu.T("liver_group_members"),
+			r.tables.liverGroupMembers,
 			goqu.On(
-				goqu.Ex{
-					"liver_group_members.liver_group_id": goqu.I("liver_groups.liver_group_id"),
-					"liver_group_members.liver_id":       liverIDs,
-				},
+				goqu.And(
+					r.tables.liverGroupMembers.Col("liver_group_id").Eq(r.tables.liverGroups.Col("liver_group_id")),
+					r.tables.liverGroupMembers.In(liverIDs),
+				),
 			)).
 		ToSQL()
 	if err != nil {
@@ -143,15 +149,15 @@ func (r *LiverGroupRepository) GetBelongingGruopsByLiver(ctx context.Context, li
 	)
 
 	var groups []*Group
-	query, args, err := dialect.From("liver_groups").
-		Select("liver_groups.*").
+	query, args, err := dialect.From(r.tables.liverGroups).
+		Select(r.tables.liverGroups.All()).
 		InnerJoin(
-			goqu.T("liver_group_members"),
+			r.tables.liverGroupMembers,
 			goqu.On(
-				goqu.Ex{
-					"liver_group_members.liver_group_id": goqu.I("liver_groups.liver_group_id"),
-					"liver_group_members.liver_id":       liverID,
-				},
+				goqu.And(
+					r.tables.liverGroupMembers.Col("liver_group_id").Eq(r.tables.liverGroups.Col("liver_group_id")),
+					r.tables.liverGroupMembers.Eq(liverID),
+				),
 			)).
 		Limit(uint(first)).
 		ToSQL()
@@ -168,6 +174,9 @@ func (r *LiverGroupRepository) GetBelongingGruopsByLiver(ctx context.Context, li
 type LiverRepository struct {
 	tracer trace.Tracer
 	db     *sqlx.DB
+	tables struct {
+		livers exp.IdentifierExpression
+	}
 }
 
 func NewLiverRepository(opts ...NewRepositoryOption) (*LiverRepository, error) {
@@ -181,10 +190,12 @@ func NewLiverRepository(opts ...NewRepositoryOption) (*LiverRepository, error) {
 	if cfg.tp == nil {
 		cfg.tp = otel.GetTracerProvider()
 	}
-	return &LiverRepository{
+	r := &LiverRepository{
 		db:     cfg.db,
 		tracer: cfg.tp.Tracer("domain.LiverRepository"),
-	}, nil
+	}
+	r.tables.livers = goqu.T("livers")
+	return r, nil
 }
 
 func (r *LiverRepository) RegisterLiver(ctx context.Context, name string) (err error) {
@@ -203,9 +214,10 @@ func (r *LiverRepository) RegisterLiver(ctx context.Context, name string) (err e
 		span.End()
 	}()
 
-	query, args, err := liversTable.
+	query, args, err := dialect.
+		From(r.tables.livers).
 		Insert().
-		Cols("name").
+		Cols(r.tables.livers.Col("name")).
 		Vals(goqu.Vals{name}).
 		ToSQL()
 	if err != nil {
@@ -233,8 +245,9 @@ func (r *LiverRepository) GetLiverByName(ctx context.Context, name string) (_ *L
 		span.End()
 	}()
 
-	query, args, err := liversTable.
-		Where(goqu.C("name").Eq(name)).
+	query, args, err := dialect.
+		From(r.tables.livers).
+		Where(r.tables.livers.Col("name").Eq(name)).
 		Limit(1).
 		ToSQL()
 	if err != nil {
@@ -286,18 +299,19 @@ func (r *LiverRepository) GetLivers(ctx context.Context, limit uint, opts ...Get
 	for _, o := range opts {
 		o(&cfg)
 	}
-	orderColumn := goqu.C("liver_id")
+	orderColumn := r.tables.livers.Col("liver_id")
 	var orderExp exp.OrderedExpression
 	if cfg.direction == OrderDirectionDesc {
 		orderExp = orderColumn.Desc()
 	} else {
 		orderExp = orderColumn.Asc()
 	}
-	qb := liversTable.
+	qb := dialect.
+		From(r.tables.livers).
 		Limit(limit + 1).
 		Order(orderExp)
 	if cfg.fromLiverID != 0 {
-		qb = qb.Where(goqu.C("liver_id").Gt(cfg.fromLiverID))
+		qb = qb.Where(r.tables.livers.Col("liver_id").Gt(cfg.fromLiverID))
 	}
 	query, args, err := qb.ToSQL()
 	if err != nil {
