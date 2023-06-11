@@ -157,7 +157,7 @@ var noop = func(context.Context) {}
 
 func setupObservability(ctx context.Context, component string) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
-		observability.WithHTTPExporter(),
+		observability.WithRemoteExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
 		observability.WithResourceName(fmt.Sprintf("%s-%s", serviceName, component)),
 	}

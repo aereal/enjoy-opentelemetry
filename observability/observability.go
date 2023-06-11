@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -54,16 +54,16 @@ func WithDebugExporter(out io.Writer) Option {
 	}
 }
 
-func WithHTTPExporter() Option {
+func WithRemoteExporter() Option {
 	return func(c *config) error {
-		httpExporter, err := otlptracehttp.New(c.ctx, otlptracehttp.WithInsecure())
+		traceExpoter, err := otlptracegrpc.New(c.ctx, otlptracegrpc.WithInsecure())
 		if err != nil {
-			return fmt.Errorf("otlptracehttp.New: %w", err)
+			return fmt.Errorf("otlptracegrpc.New: %w", err)
 		}
-		c.traceProviderOptions = append(c.traceProviderOptions, sdktrace.WithBatcher(httpExporter))
-		metricExporter, err := otlpmetrichttp.New(c.ctx, otlpmetrichttp.WithInsecure())
+		c.traceProviderOptions = append(c.traceProviderOptions, sdktrace.WithBatcher(traceExpoter))
+		metricExporter, err := otlpmetricgrpc.New(c.ctx, otlpmetricgrpc.WithInsecure())
 		if err != nil {
-			return fmt.Errorf("otlpmetrichttp.New: %w", err)
+			return fmt.Errorf("otlpmetricgrpc.New: %w", err)
 		}
 		c.metricReader = metric.NewPeriodicReader(metricExporter, metric.WithInterval(time.Second*10))
 		return nil

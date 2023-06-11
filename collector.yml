@@ -3,7 +3,6 @@
 receivers:
   otlp:
     protocols:
-      http:
       grpc:
 processors:
   batch:

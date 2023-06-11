@@ -272,7 +272,7 @@ const (
 
 func setupTracerProvider(ctx context.Context) (*observability.Aggregate, func(context.Context), error) {
 	opts := []observability.Option{
-		observability.WithHTTPExporter(),
+		observability.WithRemoteExporter(),
 		observability.WithDeploymentEnvironment(deploymentEnv),
 		observability.WithResourceName(serviceName),
 	}
